@@ -35,8 +35,8 @@ public:
     ITimer();
     ~ITimer();
     
-    void setTimeout(auto function, int delay);
-    void setInterval(auto function, int interval);
+    void setTimeout(std::function<void()> function, int delay);
+    void setInterval(std::function<void()> function, int interval);
     void stop();
     
 private:

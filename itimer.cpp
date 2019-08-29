@@ -35,7 +35,7 @@ ITimer::~ITimer()
     clear = false;
 }
 
-void ITimer::setTimeout(auto function, int delay)
+void ITimer::setTimeout(std::function<void()> function, int delay)
 {
     this->clear = false;
     std::thread t([=]() {
@@ -47,7 +47,7 @@ void ITimer::setTimeout(auto function, int delay)
     t.detach();
 }
 
-void ITimer::setInterval(auto function, int interval)
+void ITimer::setInterval(std::function<void()> function, int interval)
 {
     this->clear = false;
     std::thread t([=]() {

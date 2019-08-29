@@ -38,6 +38,7 @@ AtlasScientificI2C::~AtlasScientificI2C()
 bool AtlasScientificI2C::sendCommand(uint8_t reg, uint8_t *buf, int size)
 {
     int timeout = 300;
+    ITimer t;
     
     std::lock_guard<std::mutex> lock(m_commandRunning);
     
@@ -45,13 +46,7 @@ bool AtlasScientificI2C::sendCommand(uint8_t reg, uint8_t *buf, int size)
         timeout = 600;
     
     if (i2c_writeBuffer(m_device, m_address, reg, buf, size) == EXIT_SUCCESS) {
-        m_commandRunning.lock();
-        /*
-        boost::asio::io_service io;
-        boost::asio::deadline_timer t(io, boost::posix_time::milliseconds(timeout));
-        t.async_wait(boost::bind(&AtlasScientificI2C::readValue, this));
-        io.run();
-        */
+        t.setTimeout([this]() { readValue(); }, timeout);
         m_lastRegister = reg;
         return true;
     }
