@@ -32,10 +32,9 @@ AtlasScientificI2C::AtlasScientificI2C(uint8_t device, uint8_t address) :
 
 AtlasScientificI2C::~AtlasScientificI2C()
 {
-
 }
 
-bool AtlasScientificI2C::sendCommand(uint8_t reg, uint8_t *buf, int size)
+bool AtlasScientificI2C::sendCommand(int cmd, uint8_t reg, uint8_t *buf, int size)
 {
     int timeout = 300;
     ITimer t;
@@ -44,6 +43,8 @@ bool AtlasScientificI2C::sendCommand(uint8_t reg, uint8_t *buf, int size)
     
     if (buf[0] == 'R' || buf[0] == 'r')
         timeout = 600;
+    
+    m_lastCommand = cmd;
     
     if (i2c_writeBuffer(m_device, m_address, reg, buf, size) == EXIT_SUCCESS) {
         t.setTimeout([this]() { readValue(); }, timeout);
@@ -70,24 +71,24 @@ void AtlasScientificI2C::readValue()
             }
             m_lastResponse.push_back(buffer[i]);
         }
-        response(buffer, index);
+        response(m_lastCommand, buffer, index);
     }
 }
 
 bool AtlasScientificI2C::sendInfoCommand()
 {
     uint8_t i[1] = {'i'};
-    return sendCommand(0, i, 1);
+    return sendCommand(INFO, 0, i, 1);
 }
 
 bool AtlasScientificI2C::sendStatusCommand()
 {
     uint8_t i[] = {'s','t','a','t','u','s'};
-    return sendCommand(0, i, 6);
+    return sendCommand(STATUS, 0, i, 6);
 }
 
 bool AtlasScientificI2C::sendReadCommand()
 {
     uint8_t i[1] = {'r'};
-    return sendCommand(0, i, 1);
+    return sendCommand(READING, 0, i, 1);
 }

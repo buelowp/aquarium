@@ -28,23 +28,34 @@
 #include <thread>
 #include <chrono>
 #include <curl/curl.h>
-#include <gpiopp.h>
+#include <gpiointerrupt.h>
 #include <adaio.h>
 #include <libconfig.h>
+#include <syslog.h>
+#include <libgen.h>
 
 #include "potentialhydrogen.h"
 #include "dissolvedoxygen.h"
 #include "mqttclient.h"
 #include "flowrate.h"
+#include "itimer.h"
 
 #define DEFAULT_FR_PIN      15
+#define ONE_SECOND          1000
+#define ONE_MINUTE          (ONE_SECOND * 60)
+#define FIFTEEN_MINUTES     (ONE_MINUTE * 15)
 
 AdafruitIO *g_aio;
 MQTTClient *g_mqtt;
 bool g_aioConnected;
 bool g_mqttConnected;
 
-struct localConfig {
+struct LocalConfig {
+    AdafruitIO *g_aio;
+    MQTTClient *g_mqtt;
+    DissolvedOxygen *oxygen;
+    PotentialHydrogen *ph;
+    FlowRate *fr;
     std::string aioServer;
     int aioPort;
     std::string aioUserName;
@@ -57,33 +68,59 @@ struct localConfig {
     int flowRatePin;
     std::string configFile;
     bool debug;
+    bool daemonize;
+    bool aioConnected;
+    bool mqttConnected;
 };
 
-void setConfigDefaults(struct localConfig *lc)
+void phCallback(int cmd, std::string response)
 {
-    lc->aioPort = 8883;
-    lc->mqttPort = 1883;
-    lc->aioServer = "io.adafruit.com";
-    lc->flowRatePin = 15;
-    lc->configFile = "~/.config/aquarium.conf";
-    lc->debug = false;
+    if (cmd == PotentialHydrogen::INFO) {
+        syslog(LOG_NOTICE, "got PH probe info string %s\n", response.c_str());
+    }
+}
+
+void doCallback(int cmd, std::string response)
+{
+    if (cmd == DissolvedOxygen::INFO) {
+        syslog(LOG_NOTICE, "got DO probe info string %s\n", response.c_str());
+    }
+}
+
+void setConfigDefaults(struct LocalConfig &lc)
+{
+    lc.aioPort = 8883;
+    lc.mqttPort = 1883;
+    lc.aioServer = "io.adafruit.com";
+    lc.flowRatePin = 15;
+    lc.configFile = "~/.config/aquarium.conf";
+    lc.debug = false;
+    lc.daemonize = false;
+    lc.aioConnected = false;
+    lc.mqttConnected = false;
+    lc.oxygen = new DissolvedOxygen(0, 0x61);
+    lc.ph = new PotentialHydrogen (0, 0x63);
+    lc.fr = new FlowRate();
+    
+    lc.oxygen->setCallback(doCallback);
+    lc.ph->setCallback(phCallback);
 }
 
 
 /**
- * \func void generateLocalId(struct localConfig **lc)
+ * \func void generateLocalId(struct LocalConfig **lc)
  * \param name Pointer to local configuration structure
  * This function attempts to get the kernel hostname for this device and assigns it to name.
  */
-void generateLocalId(struct localConfig **lc)
+void generateLocalId(struct LocalConfig **lc)
 {
-    struct localConfig *llc = *lc;
+    struct LocalConfig *llc = *lc;
 	std::ifstream ifs;
 	int pos;
 
 	ifs.open("/proc/sys/kernel/hostname");
 	if (!ifs) {
-		std::cerr << __PRETTY_FUNCTION__ << ": Unable to open /proc/sys/kernel/hostname for reading" << std::endl;
+		syslog(LOG_ERR, "Unable to open /proc/sys/kernel/hostname for reading");
 		llc->localId = "omega";
 	}
 	llc->localId.assign((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
@@ -91,13 +128,13 @@ void generateLocalId(struct localConfig **lc)
 		llc->localId.erase(llc->localId.find('\n'));
 	}
 	catch (std::out_of_range &e) {
-		std::cerr << __PRETTY_FUNCTION__ << ": " << e.what() << std::endl;
+		syslog(LOG_ERR, "handled exception: %s", e.what());
 	}
 	if (llc->debug)
-        std::cout << __PRETTY_FUNCTION__ << ": Assigning " << llc->localId << " as device name" << std::endl;
+        syslog(LOG_NOTICE, "Assigning %s as device name", llc->localId.c_str());
 }
 
-bool readConfig(struct localConfig *lc)
+bool readConfig(struct LocalConfig *lc)
 {
     config_t *config;
     FILE *fs = nullptr;
@@ -116,7 +153,7 @@ bool readConfig(struct localConfig *lc)
     fs = fopen(lc->configFile.c_str(), "r");
     if (fs) {
         if (config_read(config, fs) == CONFIG_FALSE) {
-            onionPrint(ONION_SEVERITY_FATAL, "config_read: error in file %s, line %d\n", config_error_file(config), config_error_line(config));
+            syslog(LOG_ERR, "config_read: error in file %s, line %d\n", config_error_file(config), config_error_line(config));
             return false;
         }
         if (config_lookup_int(config, "local_mqtt_port", &mqttPort) == CONFIG_TRUE)
@@ -155,7 +192,7 @@ bool readConfig(struct localConfig *lc)
     config_destroy(config);
 }
 
-void flowRateCallback(GpioMetaData *md)
+void flowRateCallback(GpioInterrupt::MetaData *md)
 {
 }
 
@@ -218,7 +255,7 @@ void usage(const char *name)
  * \param port integer port number to override default Mosquitto server port number
  * Use getopt to set runtime arguments used by this server
  */
-bool parse_args(int argc, char **argv, std::string &config, bool &daemonize)
+bool parse_args(int argc, char **argv, struct LocalConfig &config)
 {
 	int opt;
 	bool rval = true;
@@ -231,12 +268,13 @@ bool parse_args(int argc, char **argv, std::string &config, bool &daemonize)
                 usage(argv[0]);
                 break;
 			case 'c':
-				config = optarg;
+				config.configFile = optarg;
 				break;
 	        case 'd':
-	            daemonize = true;
+	            config.daemonize = true;
 	            break;
 	        default:
+                syslog(LOG_ERR, "Unexpected command line argument given");
 	            usage(argv[0]);
 			}
 		}
@@ -245,44 +283,53 @@ bool parse_args(int argc, char **argv, std::string &config, bool &daemonize)
 	return rval;
 }
 
-void mainloop()
+void mainloop(struct LocalConfig &lc)
 {
-    unsigned long count = 0;
+    ITimer doUpdate;
+    ITimer phUpdate;
+    auto phfunc = [lc]() { lc.ph->sendStatusCommand(); };
+    auto dofunc = [lc]() { lc.oxygen->sendStatusCommand(); };
+    
+    doUpdate.setInterval(dofunc, ONE_MINUTE);
+    phUpdate.setInterval(phfunc, ONE_MINUTE);
     
     while (1) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        g_aio->loop();
-        g_mqtt->loop();
+        if (lc.aioConnected)
+            lc.g_aio->loop();
+        
+        if (lc.mqttConnected)
+            lc.g_mqtt->loop();
     }
+    
+    doUpdate.stop();
+    phUpdate.stop();
 }
 
 int main(int argc, char *argv[])
 {
-    DissolvedOxygen oxygen(0, 0x61);
-    PotentialHydrogen ph(0, 0x62);
-    FlowRate fr;
-    struct localConfig lc;
-    bool daemonize = false;
+    struct LocalConfig lc;
+    std::string progname = basename(argv[0]);
     
-    if (argc < 3)
-        usage(argv[0]);
+    setlogmask (LOG_UPTO (LOG_INFO));
+    openlog(progname.c_str(), LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
     
-    onionSetVerbosity(ONION_VERBOSITY_VERBOSE);
+    syslog(LOG_NOTICE, "Application starting");
+    setConfigDefaults(lc);
     
-    setConfigDefaults(&lc);
-    
-    parse_args(argc, argv, lc.configFile, daemonize);
+    parse_args(argc, argv, lc);
 
     g_aio = new AdafruitIO(lc.localId, lc.aioServer, lc.aioUserName, lc.aioKey, lc.aioPort);
     g_mqtt = new MQTTClient(lc.localId, lc.mqttServer, lc.mqttPort);
     
-    GpioMetaData flow(lc.flowRatePin);
-    flow.setInterruptType(GpioMetaData::GPIO_Irq_Type::GPIO_IRQ_RISING);
-    flow.setCallback(flowRateCallback);
-    GpioInterrupt::instance()->set(&flow);
-    GpioInterrupt::instance()->start();
+    GpioInterrupt::instance()->addPin(lc.flowRatePin);
+    GpioInterrupt::instance()->setPinCallback(lc.flowRatePin, flowRateCallback);
+    GpioInterrupt::instance()->start(lc.flowRatePin);
 
-    mainloop();
+    lc.oxygen->sendInfoCommand();
+    lc.ph->sendInfoCommand();
+    
+    mainloop(lc);
     
     return 0;
 }

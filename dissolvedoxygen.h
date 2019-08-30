@@ -32,20 +32,19 @@
 
 #include "atlasscientifici2c.h"
 
-class DissolvedOxygen : protected AtlasScientificI2C
+class DissolvedOxygen : public AtlasScientificI2C
 {
 public:
     DissolvedOxygen(uint8_t, uint8_t);
     virtual ~DissolvedOxygen();
 
     void getLastResponse(std::string&);
-    void setCallback(std::function<void(std::string)> cbk) { m_callback = cbk; }
+    void setCallback(std::function<void(int, std::string)> cbk) { m_callback = cbk; }
     
-protected:
-    void response(uint8_t*, int) override;
+    void response(int cmd, uint8_t*, int) override;
 
 private:
-    std::function<void(std::string)> m_callback;
+    std::function<void(int, std::string)> m_callback;
 };
 
 #endif // DISSOLVEDOXYGEN_H

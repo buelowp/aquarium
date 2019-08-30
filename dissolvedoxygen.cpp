@@ -33,7 +33,7 @@ DissolvedOxygen::~DissolvedOxygen()
 {
 }
 
-void DissolvedOxygen::response(uint8_t *buffer, int size)
+void DissolvedOxygen::response(int cmd, uint8_t *buffer, int size)
 {
     std::string r;
     
@@ -42,7 +42,7 @@ void DissolvedOxygen::response(uint8_t *buffer, int size)
     }
     
     try {
-        m_callback(r);
+        m_callback(cmd, r);
     }
     catch (const std::bad_function_call& e) {
         onionPrint(ONION_SEVERITY_FATAL, "exception executing callback function: %s\n", e.what());

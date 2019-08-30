@@ -38,27 +38,24 @@
 class AtlasScientificI2C
 {
 public:
+    static const int INFO = 0;
+    static const int READING = 1;
+    static const int STATUS = 2;
+
     AtlasScientificI2C(uint8_t, uint8_t);
     virtual ~AtlasScientificI2C();
     
-    bool sendCommand(uint8_t, uint8_t*, int);
+    bool sendCommand(int, uint8_t, uint8_t*, int);
     bool sendInfoCommand();
     bool sendReadCommand();
     bool sendStatusCommand();
     
-    enum Command {
-        INFO,
-        READING,
-        STATUS,
-    };
-   
-protected:
-    virtual void response(uint8_t*, int) = 0;
+    virtual void response(int, uint8_t*, int) = 0;
 
     std::vector<uint8_t> m_lastResponse;
     uint8_t m_address;
     uint8_t m_device;
-    Command m_lastCommand;
+    int m_lastCommand;
         
 private:
     void readValue();
