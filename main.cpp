@@ -27,12 +27,15 @@
 #include <fstream>
 #include <thread>
 #include <chrono>
+#include <cstring>
+
 #include <curl/curl.h>
 #include <gpiointerrupt.h>
 #include <adaio.h>
 #include <libconfig.h>
 #include <syslog.h>
 #include <libgen.h>
+#include <errno.h>
 
 #include "potentialhydrogen.h"
 #include "dissolvedoxygen.h"
@@ -136,7 +139,7 @@ void generateLocalId(struct LocalConfig **lc)
 
 bool readConfig(struct LocalConfig *lc)
 {
-    config_t *config;
+    config_t config;
     FILE *fs = nullptr;
     const char *aioServer = nullptr;
     const char *aioUserName = nullptr;
@@ -149,51 +152,57 @@ bool readConfig(struct LocalConfig *lc)
     int mqttPort;
     int frpin;
     
-    config_init(config);
+    config_init(&config);
     fs = fopen(lc->configFile.c_str(), "r");
     if (fs) {
-        if (config_read(config, fs) == CONFIG_FALSE) {
-            syslog(LOG_ERR, "config_read: error in file %s, line %d\n", config_error_file(config), config_error_line(config));
+        if (config_read(&config, fs) == CONFIG_FALSE) {
+            syslog(LOG_ERR, "config_read: error in file %s, line %d\n", config_error_file(&config), config_error_line(&config));
+            std::cerr << __FUNCTION__ << ": config_read: error in file " << config_error_file(&config) << ", line " << config_error_line(&config) << std::endl;
             return false;
         }
-        if (config_lookup_int(config, "local_mqtt_port", &mqttPort) == CONFIG_TRUE)
+        if (config_lookup_int(&config, "local_mqtt_port", &mqttPort) == CONFIG_TRUE)
             lc->mqttPort = mqttPort;
         
-        if (config_lookup_int(config, "adafruitio_port", &aioPort) == CONFIG_TRUE)
+        if (config_lookup_int(&config, "adafruitio_port", &aioPort) == CONFIG_TRUE)
             lc->aioPort = aioPort;
         
-        if (config_lookup_string(config, "adafruitio_server", &aioServer) == CONFIG_TRUE)
+        if (config_lookup_string(&config, "adafruitio_server", &aioServer) == CONFIG_TRUE)
             lc->aioServer = aioServer;
         
-        if (config_lookup_string(config, "adafruitio_user_name", &aioUserName) == CONFIG_TRUE)
+        if (config_lookup_string(&config, "adafruitio_user_name", &aioUserName) == CONFIG_TRUE)
             lc->aioUserName = aioUserName;
         
-        if (config_lookup_string(config, "adafruitio_key", &aioKey) == CONFIG_TRUE)
+        if (config_lookup_string(&config, "adafruitio_key", &aioKey) == CONFIG_TRUE)
             lc->aioKey = aioKey;
         
-        if (config_lookup_string(config, "mqtt_server", &mqttServer) == CONFIG_TRUE)
+        if (config_lookup_string(&config, "mqtt_server", &mqttServer) == CONFIG_TRUE)
             lc->mqttServer = mqttServer;
         
-        if (config_lookup_string(config, "mqtt_user_name", &mqttUserName) == CONFIG_TRUE)
+        if (config_lookup_string(&config, "mqtt_user_name", &mqttUserName) == CONFIG_TRUE)
             lc->mqttUserName = mqttUserName;
         
-        if (config_lookup_string(config, "mqtt_password", &mqttPassword) == CONFIG_TRUE)
+        if (config_lookup_string(&config, "mqtt_password", &mqttPassword) == CONFIG_TRUE)
             lc->mqttPassword = mqttPassword;
         
-        if (config_lookup_string(config, "mqtt_name", &localId) == CONFIG_TRUE)
+        if (config_lookup_string(&config, "mqtt_name", &localId) == CONFIG_TRUE)
             lc->localId = localId;
         else
             generateLocalId(&lc);
         
-        if (config_lookup_int(config, "flowrate_pin", &frpin) == CONFIG_TRUE)
+        if (config_lookup_int(&config, "flowrate_pin", &frpin) == CONFIG_TRUE)
             lc->flowRatePin = frpin;
     }
+    else {
+        syslog(LOG_ERR, "fopen: %s(%d)", strerror(errno), errno);
+        std::cout << __FUNCTION__ << "fopen: " << strerror(errno) << "(" << errno << ")" << std::endl;
+    }
     
-    config_destroy(config);
+    config_destroy(&config);
 }
 
 void flowRateCallback(GpioInterrupt::MetaData *md)
 {
+    
 }
 
 void aioGenericCallback(AdafruitIO::CallbackType type, int mid)
@@ -280,7 +289,20 @@ bool parse_args(int argc, char **argv, struct LocalConfig &config)
 		}
 	}
 
-	return rval;
+	if ((config.configFile.find("$HOME") == 0) || (config.configFile.at(0) == '~')) {
+        const char* homeDir = getenv("HOME");
+        if (config.configFile.at(0) == '~') {
+            config.configFile.erase(0, 1);
+            config.configFile.insert(0, homeDir);
+        }
+        if (config.configFile.find("$HOME") == 0) {
+            config.configFile.erase(0, 5);
+            config.configFile.insert(0, homeDir);
+        }
+        std::cout << __FUNCTION__ << ": Changing config file path to " << config.configFile << std::endl;
+    }
+
+    return rval;
 }
 
 void mainloop(struct LocalConfig &lc)
