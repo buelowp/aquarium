@@ -155,6 +155,7 @@ void generateLocalId(struct LocalConfig *lc)
 		syslog(LOG_ERR, "handled exception: %s", e.what());
 		fprintf(stderr, "handled exception: %s\n", e.what());
 	}
+
     syslog(LOG_NOTICE, "Assigning %s as device name", lc->localId.c_str());
     fprintf(stderr, "Assigning %s as device name\n", lc->localId.c_str());
 }
@@ -339,7 +340,7 @@ bool readConfig(struct LocalConfig *lc)
         fprintf(stderr, "PH device on i2c address %x\n", lc->phsensor_address);
         syslog(LOG_INFO, "O2 device on i2c address %x", lc->o2sensor_address);
         fprintf(stderr, "O2 device on i2c address %x\n", lc->o2sensor_address);
-
+        
         if (config_lookup_string(&config, "debug", &debug) == CONFIG_TRUE) {
             if (cisCompare(debug, "INFO"))
                 setlogmask(LOG_UPTO (LOG_INFO));
@@ -607,6 +608,7 @@ int main(int argc, char *argv[])
     
     parse_args(argc, argv, lc);
     readConfig(&lc);
+
 /*
     if (lc.aioEnabled)
         lc.g_aio = new AdafruitIO(lc.localId, lc.aioServer, lc.aioUserName, lc.aioKey, lc.aioPort);
@@ -621,6 +623,7 @@ int main(int argc, char *argv[])
 
     openMCP3424(lc);
 */
+
 //    lc.oxygen->sendInfoCommand();
 //    lc.ph->sendInfoCommand();
     
