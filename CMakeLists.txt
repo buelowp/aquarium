@@ -13,5 +13,5 @@ set (CMAKE_THREAD_PREFER_PTHREAD TRUE)
 find_package (Threads REQUIRED)
 
 add_executable (${PROJECT_NAME} ${SOURCES})
-target_link_libraries (${PROJECT_NAME} -loniondebug Threads::Threads -lcurl -loniongpiopp -loniondebug -lonioni2c -ladafruitio -lmosquittopp -lconfig -lboost_container)
+target_link_libraries (${PROJECT_NAME} -loniondebug Threads::Threads -lcurl -loniongpiopp -loniondebug -lonioni2c -ladafruitio -lmosquittopp -lconfig -lmcp3424)
 
