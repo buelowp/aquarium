@@ -27,22 +27,29 @@
 
 ITimer::ITimer()
 {
-    clear = false;
+    this->clear = false;
 }
 
 ITimer::~ITimer()
 {
-    clear = false;
+    this->clear = false;
 }
 
 void ITimer::setTimeout(std::function<void()> function, int delay)
 {
-    this->clear = false;
+    clear = false;
     std::thread t([=]() {
-        if(this->clear) return;
         std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-        if(this->clear) return;
-        function();
+        if (clear) {
+            return;
+        }
+        
+        try {
+            function();
+        }
+        catch (std::exception &e) {
+            syslog(LOG_ERR, "Unable to execute function: %s\n", e.what());
+        }
     });
     t.detach();
 }

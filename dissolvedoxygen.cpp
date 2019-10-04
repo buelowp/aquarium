@@ -37,6 +37,7 @@ void DissolvedOxygen::response(int cmd, uint8_t *buffer, int size)
 {
     std::string r;
     
+    fprintf(stderr, "got a response for cmd %d of size %d\n", cmd, size);
     for (int i = 0; i < size; i++) {
         r += static_cast<char>(buffer[i]);
     }
@@ -45,7 +46,7 @@ void DissolvedOxygen::response(int cmd, uint8_t *buffer, int size)
         m_callback(cmd, r);
     }
     catch (const std::bad_function_call& e) {
-        onionPrint(ONION_SEVERITY_FATAL, "exception executing callback function: %s\n", e.what());
+        syslog(LOG_ERR, "Caught exception: %s", e.what());
     }
 }
 

@@ -28,6 +28,7 @@
 
 #include <functional>
 #include <thread>
+#include <syslog.h>
 
 class ITimer
 {
@@ -37,7 +38,7 @@ public:
     
     void setTimeout(std::function<void()> function, int delay);
     void setInterval(std::function<void()> function, int interval);
-    void stop();
+    void stop() { clear = true; }
     
 private:
     bool clear;

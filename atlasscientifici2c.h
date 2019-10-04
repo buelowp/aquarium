@@ -29,7 +29,15 @@
 #include <mutex>
 #include <vector>
 
-#include <onion-i2c.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <linux/i2c-dev.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <syslog.h>
 
 #include "itimer.h"
 
@@ -62,6 +70,9 @@ private:
     
     std::mutex m_commandRunning;
     uint8_t m_lastRegister;
+    ITimer t;
+    int m_fd;
+    bool m_enabled;
 };
 
 #endif // ATLASSCIENTIFICI2C_H

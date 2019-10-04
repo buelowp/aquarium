@@ -156,7 +156,7 @@ void generateLocalId(struct LocalConfig *lc)
 		fprintf(stderr, "handled exception: %s\n", e.what());
 	}
 
-    syslog(LOG_NOTICE, "Assigning %s as device name", lc->localId.c_str());
+    syslog(LOG_INFO, "Assigning %s as device name", lc->localId.c_str());
     fprintf(stderr, "Assigning %s as device name\n", lc->localId.c_str());
 }
 
@@ -405,15 +405,17 @@ void sendTempData(const struct LocalConfig &lc)
     std::string payload;
     std::string aio;
     
-    lc.temp->getTemperature(temperature);
-    aio = std::to_string(temperature);
-    payload.append("{\"temperature\":\"" + aio + "\"\n");
-    
-    if (count++ > 60) {
-        g_aio->publish(NULL, AIO_TEMP_FEED, aio.size(), aio.c_str());
-        count = 1;
+    if (lc.mqttEnabled && lc.aioEnabled) {
+        lc.temp->getTemperature(temperature);
+        aio = std::to_string(temperature);
+        payload.append("{\"temperature\":\"" + aio + "\"\n");
+        
+        if (count++ > 60) {
+            g_aio->publish(NULL, AIO_TEMP_FEED, aio.size(), aio.c_str());
+            count = 1;
+        }
+        g_mqtt->publish(NULL, "aquarium/temperature", payload.size(), payload.c_str());
     }
-    g_mqtt->publish(NULL, "aquarium/temperature", payload.size(), payload.c_str());
 }
 
 void aioGenericCallback(AdafruitIO::CallbackType type, int mid)
@@ -572,21 +574,21 @@ void mainloop(struct LocalConfig &lc)
     auto dofunc = [lc]() { lc.oxygen->sendStatusCommand(); };
     auto frfunc = [lc]() { sendFlowRateData(lc); };
     auto tempfunc = [lc]() { sendTempData(lc); };
-    
+/*    
     doUpdate.setInterval(dofunc, ONE_MINUTE);
     phUpdate.setInterval(phfunc, ONE_MINUTE);
     frUpdate.setInterval(frfunc, ONE_SECOND);
     tempUpdate.setInterval(tempfunc, ONE_SECOND);
-    
+*/    
     while (1) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         if (lc.aioEnabled && lc.aioConnected)
             lc.g_aio->loop();
         
         if (lc.mqttEnabled && lc.mqttConnected)
             lc.g_mqtt->loop();
         
-        getWaterLevel(lc);
+//        getWaterLevel(lc);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
     
     doUpdate.stop();
@@ -609,13 +611,13 @@ int main(int argc, char *argv[])
     parse_args(argc, argv, lc);
     readConfig(&lc);
 
-/*
+
     if (lc.aioEnabled)
         lc.g_aio = new AdafruitIO(lc.localId, lc.aioServer, lc.aioUserName, lc.aioKey, lc.aioPort);
     
     if (lc.mqttEnabled)
         lc.g_mqtt = new MQTTClient(lc.localId, lc.mqttServer, lc.mqttPort);
-    */
+    
 /*    
     GpioInterrupt::instance()->addPin(lc.flowRatePin);
     GpioInterrupt::instance()->setPinCallback(lc.flowRatePin, flowRateCallback);
@@ -624,10 +626,10 @@ int main(int argc, char *argv[])
     openMCP3424(lc);
 */
 
-//    lc.oxygen->sendInfoCommand();
+    lc.oxygen->sendInfoCommand();
 //    lc.ph->sendInfoCommand();
     
-//    mainloop(lc);
+    mainloop(lc);
     
     return 0;
 }

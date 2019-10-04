@@ -45,7 +45,7 @@ void PotentialHydrogen::response(int cmd, uint8_t *buffer, int size)
         m_callback(cmd, r);
     }
     catch (const std::bad_function_call& e) {
-        onionPrint(ONION_SEVERITY_FATAL, "exception executing callback function: %s\n", e.what());
+        syslog(LOG_ERR, "exception executing callback function: %s\n", e.what());
     }
 }
 

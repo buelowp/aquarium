@@ -29,6 +29,7 @@
 #include <iostream>
 #include <functional>
 #include <string>
+#include <syslog.h>
 
 #include "atlasscientifici2c.h"
 

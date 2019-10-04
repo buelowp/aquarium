@@ -28,6 +28,20 @@
 AtlasScientificI2C::AtlasScientificI2C(uint8_t device, uint8_t address) : 
     m_device(device), m_address(address)
 {
+    char filename[40];
+    sprintf(filename, "/dev/i2c-%d", m_device);
+        
+    m_enabled = true;
+
+    if ((m_fd = open(filename, O_RDWR)) < 0) {
+        syslog(LOG_ERR, "Failed to open i2c device %d", m_device);
+        m_enabled = false;
+    }
+
+    if (ioctl(m_fd, I2C_SLAVE, m_address) < 0) {
+        syslog(LOG_ERR, "Failed to acquire bus access and/or talk to slave at address %x", m_address);
+        m_enabled = false;
+    }
 }
 
 AtlasScientificI2C::~AtlasScientificI2C()
@@ -37,8 +51,8 @@ AtlasScientificI2C::~AtlasScientificI2C()
 bool AtlasScientificI2C::sendCommand(int cmd, uint8_t reg, uint8_t *buf, int size)
 {
     int timeout = 300;
-    ITimer t;
     
+    syslog(LOG_INFO, "Sending command %d with buffer size %d", cmd, size);
     std::lock_guard<std::mutex> lock(m_commandRunning);
     
     if (buf[0] == 'R' || buf[0] == 'r')
@@ -46,10 +60,14 @@ bool AtlasScientificI2C::sendCommand(int cmd, uint8_t reg, uint8_t *buf, int siz
     
     m_lastCommand = cmd;
     
-    if (i2c_writeBuffer(m_device, m_address, reg, buf, size) == EXIT_SUCCESS) {
-        t.setTimeout([this]() { readValue(); }, timeout);
+    if (write(m_fd, buf, size) > 0) {
+        t.setTimeout(std::bind(&AtlasScientificI2C::readValue, this), timeout);
         m_lastRegister = reg;
+        fprintf(stderr, "Success sending i2c value\n");
         return true;
+    }
+    else {
+        fprintf(stderr, "Error writing i2c event\n");
     }
     return false;
 }
@@ -58,12 +76,14 @@ void AtlasScientificI2C::readValue()
 {
     uint8_t buffer[MAX_READ_SIZE];
     int index = 0;
+    int bytes;
     
+    fprintf(stderr, "Attempting to read a value from the device\n");
     std::lock_guard<std::mutex> lock(m_commandRunning);
     
     memset(buffer, 0, MAX_READ_SIZE);
     
-    if (i2c_read(m_device, m_address, m_lastRegister, buffer, MAX_READ_SIZE) == EXIT_SUCCESS) {
+    if ((bytes = read(m_fd, buffer, MAX_READ_SIZE)) > 0) {
         for (int i = 0; i < MAX_READ_SIZE; i++) {
             if (buffer[i] == 0) {
                 index = i;
@@ -72,6 +92,14 @@ void AtlasScientificI2C::readValue()
             m_lastResponse.push_back(buffer[i]);
         }
         response(m_lastCommand, buffer, index);
+        fprintf(stdout, "got response \"");
+        for (int j = 0; j < index; j++) {
+            fprintf(stdout, "%c", static_cast<char>(buffer[j]));
+        }
+        fprintf(stdout, "\"\n");
+    }
+    else {
+        syslog(LOG_ERR, "Unable to read from i2c device at address %x", m_address);
     }
 }
 
