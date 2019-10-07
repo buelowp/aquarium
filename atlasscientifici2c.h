@@ -28,6 +28,8 @@
 #include <functional>
 #include <mutex>
 #include <vector>
+#include <sstream>
+#include <iostream>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,11 +51,16 @@ public:
     static const int INFO = 0;
     static const int READING = 1;
     static const int STATUS = 2;
+    static const int CALIBRATE = 3;
+    static const int SLOPE = 4;
+    static const int SETTEMPCOMP = 5;
+    static const int SETTEMPCOMPREAD = 6;
+    static const int GETTEMPCOMP = 7;
 
     AtlasScientificI2C(uint8_t, uint8_t);
     virtual ~AtlasScientificI2C();
     
-    bool sendCommand(int, uint8_t, uint8_t*, int);
+    bool sendCommand(int, uint8_t*, int, int);
     bool sendInfoCommand();
     bool sendReadCommand();
     bool sendStatusCommand();
@@ -64,15 +71,16 @@ public:
     uint8_t m_address;
     uint8_t m_device;
     int m_lastCommand;
-        
+    std::string m_version;
+    bool m_enabled;
+    std::vector<std::string> split(const std::string& s, char delimiter);
+    
 private:
     void readValue();
     
     std::mutex m_commandRunning;
-    uint8_t m_lastRegister;
     ITimer t;
     int m_fd;
-    bool m_enabled;
 };
 
 #endif // ATLASSCIENTIFICI2C_H

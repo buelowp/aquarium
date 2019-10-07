@@ -25,36 +25,62 @@
 
 #include "temperature.h"
 
+Temperature::Temperature()
+{
+    m_enabled = false;
+    std::vector<std::string> v;
+    
+    DIR* dirp = opendir("/sys/bus/w1/devices/");
+    struct dirent * dp;
+    while ((dp = readdir(dirp)) != NULL) {
+        v.push_back(dp->d_name);
+    }
+    closedir(dirp);
+    
+    for (int i = 0; i < v.size(); i++) {
+        if (v.at(i).find("28-") != std::string::npos) {
+            m_device = v.at(i);
+            break;
+        }
+    }
+    if (m_device.size() > 0)
+        m_enabled = true;
+    
+    std::cout << "Found 1-wire device " << m_device << std::endl;
+    m_path = "/sys/bus/w1/devices/" + m_device + "/w1_slave";
+}
+
 Temperature::Temperature(std::string device) : m_device(device)
 {
-    m_path = "/sys/bus/w1/devices/" + m_device + "w1_slave";
+    m_path = "/sys/bus/w1/devices/" + m_device + "/w1_slave";
+    m_enabled = true;
 }
 
 Temperature::~Temperature()
 {
 }
 
-void Temperature::getTemperature(double &temp)
+void Temperature::getTemperature(float &tc, float &tf)
 {
     std::ifstream fs(m_path);
+    std::stringstream contents;
     std::string data;
     
     if (fs.is_open()) {
-        std::stringstream contents;
         contents << fs.rdbuf();
         int pos = contents.str().find("t=");
         if (pos != std::string::npos) {
-            while (contents.str().at(pos) != '\n') {
-                data += contents.str().at(pos++);
-            }
+            data = contents.str().substr(pos + 2, 5);
         }
-    }
-    
-    try {
-        temp = std::stod(data);
-    }
-    catch (std::exception &e) {
-        syslog(LOG_ERR, "Unable to decode %s, exception is %s\n", data.c_str(), e.what());
+        try {
+            float t = std::stof(data);
+            tc = t / 1000;
+            tf = (tc * 1.8) + 32;
+        }
+        catch (std::exception &e) {
+            syslog(LOG_ERR, "Unable to decode %s, exception is %s\n", data.c_str(), e.what());
+            std::cerr << "Unable to decode " << data << std::endl;
+        }
     }
 }
 

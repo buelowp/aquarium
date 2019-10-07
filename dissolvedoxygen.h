@@ -45,7 +45,13 @@ public:
     void response(int cmd, uint8_t*, int) override;
 
 private:
+    void handleCalibration(std::string);
+    void handleStatusResponse(std::string);
+    
     std::function<void(int, std::string)> m_callback;
+    int m_calibration;
+    std::string m_lastResetReason;
+    double m_lastVoltage;
 };
 
 #endif // DISSOLVEDOXYGEN_H

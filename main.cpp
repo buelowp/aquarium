@@ -28,6 +28,7 @@
 #include <thread>
 #include <chrono>
 #include <cstring>
+#include <iomanip>
 
 #include <curl/curl.h>
 #include <gpiointerrupt.h>
@@ -110,15 +111,31 @@ bool cisCompare(const std::string & str1, const std::string &str2)
 
 void phCallback(int cmd, std::string response)
 {
-    if (cmd == PotentialHydrogen::INFO) {
-        syslog(LOG_NOTICE, "got PH probe info string %s\n", response.c_str());
+    switch (cmd) {
+        case AtlasScientificI2C::INFO:
+            syslog(LOG_NOTICE, "got pH probe info event: %s\n", response.c_str());
+            break;
+        case AtlasScientificI2C::STATUS:
+            syslog(LOG_NOTICE, "got pH probe status event: %s\n", response.c_str());
+            std::cout << "Got pH status event: " << response << std::endl;
+            break;
+        default:
+            break;
     }
 }
 
 void doCallback(int cmd, std::string response)
 {
-    if (cmd == DissolvedOxygen::INFO) {
-        syslog(LOG_NOTICE, "got DO probe info string %s\n", response.c_str());
+    switch (cmd) {
+        case AtlasScientificI2C::INFO:
+            syslog(LOG_NOTICE, "got DO probe info event: %s\n", response.c_str());
+            break;
+        case AtlasScientificI2C::STATUS:
+            syslog(LOG_NOTICE, "got DO probe status event: %s\n", response.c_str());
+            std::cout << "Got DO status event: " << response << std::endl;
+            break;
+        default:
+            break;
     }
 }
 
@@ -128,6 +145,7 @@ void setConfigDefaults(struct LocalConfig &lc)
     lc.daemonize = false;
     lc.fr = new FlowRate();
     lc.adc = new mcp3424();
+    lc.temp = nullptr;
 }
 
 
@@ -356,7 +374,7 @@ bool readConfig(struct LocalConfig *lc)
     lc->ph = new PotentialHydrogen (0, lc->phsensor_address);
     lc->oxygen->setCallback(doCallback);
     lc->ph->setCallback(phCallback);
-
+    
     config_destroy(&config);
 }
 
@@ -401,13 +419,14 @@ void sendFlowRateData(const struct LocalConfig &lc)
 void sendTempData(const struct LocalConfig &lc)
 {
     static int count = 0;
-    double temperature;
+    float tc;
+    float tf;
     std::string payload;
     std::string aio;
     
     if (lc.mqttEnabled && lc.aioEnabled) {
-        lc.temp->getTemperature(temperature);
-        aio = std::to_string(temperature);
+        lc.temp->getTemperature(tc, tf);
+        aio = std::to_string(tc);
         payload.append("{\"temperature\":\"" + aio + "\"\n");
         
         if (count++ > 60) {
@@ -533,14 +552,17 @@ bool parse_args(int argc, char **argv, struct LocalConfig &config)
     return rval;
 }
 
-void startOneWire(struct LocalConfig const &lc)
+void startOneWire(struct LocalConfig &lc)
 {
     std::string program = "insmod w1-gpio-custom bus0=0,";
     
     program += std::to_string(lc.onewirepin);
     program += ",0";
     
+    std::cout << "Executing: " << program << std::endl;
     system(program.c_str());
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    lc.temp = new Temperature();
 }
 
 void getWaterLevel(struct LocalConfig &lc)
@@ -578,8 +600,9 @@ void mainloop(struct LocalConfig &lc)
     doUpdate.setInterval(dofunc, ONE_MINUTE);
     phUpdate.setInterval(phfunc, ONE_MINUTE);
     frUpdate.setInterval(frfunc, ONE_SECOND);
+*/
     tempUpdate.setInterval(tempfunc, ONE_SECOND);
-*/    
+    
     while (1) {
         if (lc.aioEnabled && lc.aioConnected)
             lc.g_aio->loop();
@@ -588,6 +611,12 @@ void mainloop(struct LocalConfig &lc)
             lc.g_mqtt->loop();
         
 //        getWaterLevel(lc);
+        if (lc.temp) {
+            float tc;
+            float tf;
+            lc.temp->getTemperature(tc, tf);
+            std::cout << std::setprecision(4) << "Current temperature: " << tc << "C, " << tf << "F" << std::endl;
+        }
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
     
@@ -611,7 +640,8 @@ int main(int argc, char *argv[])
     parse_args(argc, argv, lc);
     readConfig(&lc);
 
-
+    startOneWire(lc);
+    
     if (lc.aioEnabled)
         lc.g_aio = new AdafruitIO(lc.localId, lc.aioServer, lc.aioUserName, lc.aioKey, lc.aioPort);
     
@@ -627,7 +657,10 @@ int main(int argc, char *argv[])
 */
 
     lc.oxygen->sendInfoCommand();
-//    lc.ph->sendInfoCommand();
+    lc.oxygen->sendStatusCommand();
+    lc.ph->sendInfoCommand();
+    lc.ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
+    lc.ph->sendStatusCommand();
     
     mainloop(lc);
     

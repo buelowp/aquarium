@@ -26,22 +26,28 @@
 #ifndef TEMPERATURE_H
 #define TEMPERATURE_H
 
+#include <iostream>
 #include <fstream>
 #include <string>
 #include <sstream>
+#include <vector>
 #include <syslog.h>
+#include <sys/types.h>
+#include <dirent.h>
 
 class Temperature
 {
 public:
+    Temperature();
     Temperature(std::string);
     ~Temperature();
     
-    void getTemperature(double&);
+    void getTemperature(float&, float&);
     
 private:
     std::string m_device;
     std::string m_path;
+    bool m_enabled;
 };
 
 #endif // TEMPERATURE_H

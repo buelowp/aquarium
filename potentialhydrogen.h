@@ -29,6 +29,7 @@
 #include <string>
 #include <functional>
 #include <iostream>
+#include <iterator>
 
 #include "atlasscientifici2c.h"
 
@@ -38,16 +39,41 @@
 class PotentialHydrogen : public AtlasScientificI2C
 {
 public:
+    static const int CLEAR = 100;
+    static const int LOW = 101;
+    static const int MID = 102;
+    static const int HIGH = 103;
+    static const int QUERY = 104;
+    
+    static const int NOCALIBRATION = 0;
+    static const int ONEPOINTCAL = 1;
+    static const int TWOPOINTCAL = 2;
+    static const int THREEPOINTCAL = 3;
+    
     PotentialHydrogen(uint8_t, uint8_t);
     virtual ~PotentialHydrogen();
     
     void getLastResponse(std::string&);
     void setCallback(std::function<void(int, std::string)> cbk) { m_callback = cbk; }
 
-    void response(int cmd, uint8_t*, int) override;
+    void response(int cmd, uint8_t[], int) override;
 
+    void calibrate(int, uint8_t*, int);
+    void slope();
+    void setTempCompensation(uint8_t*, int);
+    void setTempCompensationAndRead(uint8_t*, int);
+    void getTempCompensation();
+    std::string getLastReason() { return m_lastResetReason; }
+    double getVoltage() { return m_lastVoltage; }
+    
 private:
+    void handleCalibration(std::string);
+    void handleStatusResponse(std::string);
+    
     std::function<void(int, std::string)> m_callback;
+    int m_calibration;
+    std::string m_lastResetReason;
+    double m_lastVoltage;
 };
 
 #endif // DISSOLVEDOXYGEN_H
