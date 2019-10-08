@@ -421,19 +421,22 @@ void sendTempData(const struct LocalConfig &lc)
     static int count = 0;
     float tc;
     float tf;
-    std::string payload;
+    std::string payload("{\"temperature\":\"[");
     std::string aio;
     
-    if (lc.mqttEnabled && lc.aioEnabled) {
-        lc.temp->getTemperature(tc, tf);
-        aio = std::to_string(tc);
-        payload.append("{\"temperature\":\"" + aio + "\"\n");
-        
+    if (!lc.mqttEnabled && !lc.aioEnabled) {
+        if (lc.temp) {
+            lc.temp->getTemperature(tc, tf);
+            payload.append(std::to_string(tc) + "," + std::to_string(tf) + "]}");
+            std::cout << payload << std::endl;
+        }
+/*        
         if (count++ > 60) {
             g_aio->publish(NULL, AIO_TEMP_FEED, aio.size(), aio.c_str());
             count = 1;
         }
         g_mqtt->publish(NULL, "aquarium/temperature", payload.size(), payload.c_str());
+        */
     }
 }
 
@@ -488,6 +491,8 @@ bool openMCP3424(struct LocalConfig &lc)
 
 	mcp3424_init(lc.adc, fd, lc.adc_address, MCP3424_RESOLUTION_14);
     mcp3424_set_conversion_mode(lc.adc, MCP3424_CONVERSION_MODE_CONTINUOUS);
+    fprintf(stdout, "MCP 3424 setup complete for address 0x%x\n", lc.adc_address);
+    syslog(LOG_INFO, "MCP 3424 setup complete for address 0x%x\n", lc.adc_address);
     return true;
 }
 
@@ -565,7 +570,7 @@ void startOneWire(struct LocalConfig &lc)
     lc.temp = new Temperature();
 }
 
-void getWaterLevel(struct LocalConfig &lc)
+void getWaterLevel(const struct LocalConfig &lc)
 {
     static int count = 0;
     unsigned int result;
@@ -577,13 +582,15 @@ void getWaterLevel(struct LocalConfig &lc)
     payload += "{\"waterlevel\":";
     payload += std::to_string(result);
     payload += "}";
-    
+    std::cout << payload << std::endl;
+    /*
     if (count++ > 60) {
         aio = std::to_string(result);
         g_aio->publish(NULL, AIO_LEVEL_FEED, aio.size(), aio.c_str());
         count = 1;
     }
     g_mqtt->publish(NULL, "aquarium/level", payload.size(), payload.c_str());
+    */
 }
 
 void mainloop(struct LocalConfig &lc)
@@ -592,16 +599,19 @@ void mainloop(struct LocalConfig &lc)
     ITimer phUpdate;
     ITimer frUpdate;
     ITimer tempUpdate;
+    ITimer wlUpdate;
     auto phfunc = [lc]() { lc.ph->sendStatusCommand(); };
     auto dofunc = [lc]() { lc.oxygen->sendStatusCommand(); };
     auto frfunc = [lc]() { sendFlowRateData(lc); };
     auto tempfunc = [lc]() { sendTempData(lc); };
+    auto wlfunc = [lc]() { getWaterLevel(lc); };
 /*    
     doUpdate.setInterval(dofunc, ONE_MINUTE);
     phUpdate.setInterval(phfunc, ONE_MINUTE);
     frUpdate.setInterval(frfunc, ONE_SECOND);
 */
-    tempUpdate.setInterval(tempfunc, ONE_SECOND);
+    tempUpdate.setInterval(tempfunc, ONE_MINUTE);
+    wlUpdate.setInterval(wlfunc, ONE_MINUTE);
     
     while (1) {
         if (lc.aioEnabled && lc.aioConnected)
@@ -610,13 +620,6 @@ void mainloop(struct LocalConfig &lc)
         if (lc.mqttEnabled && lc.mqttConnected)
             lc.g_mqtt->loop();
         
-//        getWaterLevel(lc);
-        if (lc.temp) {
-            float tc;
-            float tf;
-            lc.temp->getTemperature(tc, tf);
-            std::cout << std::setprecision(4) << "Current temperature: " << tc << "C, " << tf << "F" << std::endl;
-        }
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
     
@@ -652,9 +655,8 @@ int main(int argc, char *argv[])
     GpioInterrupt::instance()->addPin(lc.flowRatePin);
     GpioInterrupt::instance()->setPinCallback(lc.flowRatePin, flowRateCallback);
     GpioInterrupt::instance()->start(lc.flowRatePin);
-
-    openMCP3424(lc);
 */
+    openMCP3424(lc);
 
     lc.oxygen->sendInfoCommand();
     lc.oxygen->sendStatusCommand();
