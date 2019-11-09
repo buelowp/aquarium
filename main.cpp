@@ -31,7 +31,7 @@
 #include <iomanip>
 
 #include <curl/curl.h>
-#include <gpiointerrupt.h>
+#include <gpiointerruptpp.h>
 #include <adaio.h>
 #include <libconfig.h>
 #include <syslog.h>
@@ -57,13 +57,17 @@
 #define AIO_TEMP_FEED       "pbuelow/feeds/aquarium.Temperature"
 #define AIO_LEVEL_FEED      "pbuelow/feeds/aquarium.waterlevel"
 
-#define RAW_MIN 0
-#define RAW_MAX_12 2048
-#define RAW_MAX_14 8192
-#define RAW_MAX_16 32768
-#define RAW_MAX_18 131072
-#define V_MIN 0.00
-#define V_MAX 3.30
+#define RAW_MIN             0
+#define RAW_MAX_12          2048
+#define RAW_MAX_14          8192
+#define RAW_MAX_16          32768
+#define RAW_MAX_18          131072
+#define V_MIN               0.00
+#define V_MAX               3.30
+
+#define GREEN_LED           13
+#define YELLOW_LED          12
+#define RED_LED             18
 
 AdafruitIO *g_aio;
 MQTTClient *g_mqtt;
@@ -100,6 +104,7 @@ struct LocalConfig {
     int o2sensor_address;
     int phsensor_address;
     int onewirepin;
+    int flowrateenablepin;
 };
 
 bool cisCompare(const std::string & str1, const std::string &str2)
@@ -301,6 +306,11 @@ bool readConfig(struct LocalConfig *lc)
         else
             lc->onewirepin = 1;
  
+        if (config_lookup_int(&config, "flowrate_enable_pin", &owpin) == CONFIG_TRUE)
+            lc->flowrateenablepin = owpin;
+        else
+            lc->flowrateenablepin = 12;
+
         if (lc->tempDevice.size() > 0) {
             syslog(LOG_INFO, "DS18B20 device on pin %d using device name %s", lc->onewirepin, lc->tempDevice.c_str());
             fprintf(stderr, "DS18B20 device on pin %d using device name %s\n", lc->onewirepin, lc->tempDevice.c_str());
@@ -402,9 +412,11 @@ void sendFlowRateData(const struct LocalConfig &lc)
     std::string aio = std::to_string(lc.fr->gpm());
 
     payload.append("{\"gpm\":\"" + std::to_string(lc.fr->gpm()) + "\",\n");
-    payload.append("{\"lpm\":\"" + std::to_string(lc.fr->lpm()) + "\",\n");
-    payload.append("{\"hertz\":\"" + std::to_string(lc.fr->hertz()) + "\"}\n");
+    payload.append("\"lpm\":\"" + std::to_string(lc.fr->lpm()) + "\",\n");
+    payload.append("\"hertz\":\"" + std::to_string(lc.fr->hertz()) + "\"}\n");
 
+    std::cout << payload << std::endl;
+    /*
     if (count++ > 60) {
         g_aio->publish(NULL, AIO_FLOWRATE_FEED, aio.size(), aio.c_str());
         count = 1;
@@ -414,6 +426,7 @@ void sendFlowRateData(const struct LocalConfig &lc)
     }
     if (!warmup)
         g_mqtt->publish(NULL, "aquarium/flowrate", payload.size(), payload.c_str());
+    */
 }
 
 void sendTempData(const struct LocalConfig &lc)
@@ -593,6 +606,42 @@ void getWaterLevel(const struct LocalConfig &lc)
     */
 }
 
+bool turnOnFlowSensor(struct LocalConfig &lc)
+{
+    int fd;
+    char buf[255];
+    
+    memset(buf, '\0', 255);
+    if ((fd = open("/sys/class/gpio/export", O_WRONLY)) < 0) {
+        syslog(LOG_ERR, "Cannot export pin %d, error: %s(%d)", lc.flowrateenablepin, strerror(errno), errno);
+        return false;
+    }
+    sprintf(buf, "%d", lc.flowrateenablepin); 
+    write(fd, buf, strlen(buf));
+    close(fd);
+    
+    memset(buf, '\0', 255);
+    sprintf(buf, "/sys/class/gpio/gpio%d/direction", lc.flowrateenablepin);
+    if ((fd = open(buf, O_WRONLY)) < 0) {
+        syslog(LOG_ERR, "Cannot set pin direction for pin %d, error: %s(%d)", lc.flowrateenablepin, strerror(errno), errno);
+        return false;
+    }
+    write(fd, "out", 3);
+    close(fd);
+
+    memset(buf, '\0', 255);
+    sprintf(buf, "/sys/class/gpio/gpio%d/value", lc.flowrateenablepin);
+    if ((fd = open(buf, O_WRONLY)) < 0){
+        syslog(LOG_ERR, "Cannot set pin direction for pin %d, error: %s(%d)", lc.flowrateenablepin, strerror(errno), errno);
+        return false;
+    }
+    sprintf(buf, "%d", 1);
+    write(fd, buf, 1);
+    close(fd);
+    std::cout << "Exported pin " << lc.flowrateenablepin << " to turn on flow rate sensor" << std::endl;
+    return true;
+}
+
 void mainloop(struct LocalConfig &lc)
 {
     ITimer doUpdate;
@@ -608,8 +657,8 @@ void mainloop(struct LocalConfig &lc)
 /*    
     doUpdate.setInterval(dofunc, ONE_MINUTE);
     phUpdate.setInterval(phfunc, ONE_MINUTE);
-    frUpdate.setInterval(frfunc, ONE_SECOND);
 */
+    frUpdate.setInterval(frfunc, ONE_SECOND);
     tempUpdate.setInterval(tempfunc, ONE_MINUTE);
     wlUpdate.setInterval(wlfunc, ONE_MINUTE);
     
@@ -629,6 +678,18 @@ void mainloop(struct LocalConfig &lc)
     tempUpdate.stop();
 }
 
+void initializeLeds()
+{
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    GpioInterrupt::instance()->setValue(GREEN_LED, 1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    GpioInterrupt::instance()->setValue(GREEN_LED, 0);
+    GpioInterrupt::instance()->setValue(RED_LED, 1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    GpioInterrupt::instance()->setValue(RED_LED, 0);
+    GpioInterrupt::instance()->setValue(GREEN_LED, 1);
+}
+
 int main(int argc, char *argv[])
 {
     struct LocalConfig lc;
@@ -643,6 +704,17 @@ int main(int argc, char *argv[])
     parse_args(argc, argv, lc);
     readConfig(&lc);
 
+    if (!GpioInterrupt::instance()->addPin(GREEN_LED, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
+        syslog(LOG_ERR, "Unable to open GPIO for green led");
+    
+    if (!GpioInterrupt::instance()->addPin(RED_LED, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
+        syslog(LOG_ERR, "Unable to open GPIO for red led");
+
+    GpioInterrupt::instance()->addPin(lc.flowRatePin);
+    GpioInterrupt::instance()->setPinCallback(lc.flowRatePin, flowRateCallback);
+    
+    initializeLeds();
+    
     startOneWire(lc);
     
     if (lc.aioEnabled)
@@ -650,12 +722,11 @@ int main(int argc, char *argv[])
     
     if (lc.mqttEnabled)
         lc.g_mqtt = new MQTTClient(lc.localId, lc.mqttServer, lc.mqttPort);
+        
+    turnOnFlowSensor(lc);
     
-/*    
-    GpioInterrupt::instance()->addPin(lc.flowRatePin);
-    GpioInterrupt::instance()->setPinCallback(lc.flowRatePin, flowRateCallback);
-    GpioInterrupt::instance()->start(lc.flowRatePin);
-*/
+    GpioInterrupt::instance()->start();
+
     openMCP3424(lc);
 
     lc.oxygen->sendInfoCommand();

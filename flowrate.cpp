@@ -45,14 +45,15 @@ FlowRate& FlowRate::operator++(int)
 
 void FlowRate::run()
 {
+    int count = 0;
+    
     m_enabled = true;
-    std::cout << __FUNCTION__ << ": Running thread, enabled = " << m_enabled << std::endl;
     while (m_enabled) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        if (m_count > 0) {
-            m_hertz = m_count;
-            m_count = 0;
-            m_lpm = 0.3256 * m_hertz + 5.2004;
+        m_hertz = m_count;
+        m_count = 0;
+        if (m_hertz > 0) {
+            m_lpm = (0.3256 * m_hertz) + 5.2004;
             m_gpm = m_lpm * .263;
         }
         else {
