@@ -43,11 +43,14 @@ Temperature::Temperature()
             break;
         }
     }
-    if (m_device.size() > 0)
+    if (m_device.size() > 0) {
         m_enabled = true;
     
-    std::cout << "Found 1-wire device " << m_device << std::endl;
-    m_path = "/sys/bus/w1/devices/" + m_device + "/w1_slave";
+        m_path = "/sys/bus/w1/devices/" + m_device + "/w1_slave";
+        syslog(LOG_INFO, "Found 1-wire device %s", m_path.c_str());
+    }
+    else
+        syslog(LOG_ERR, "No 1-wire devices found");
 }
 
 Temperature::Temperature(std::string device) : m_device(device)
@@ -66,7 +69,7 @@ void Temperature::getTemperature(float &tc, float &tf)
     std::stringstream contents;
     std::string data;
     
-    if (fs.is_open()) {
+    if (fs.is_open() && m_enabled) {
         contents << fs.rdbuf();
         int pos = contents.str().find("t=");
         if (pos != std::string::npos) {

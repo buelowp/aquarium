@@ -50,11 +50,11 @@ void DissolvedOxygen::response(int cmd, uint8_t *buffer, int size)
             m_version = result[2];
             if (result[1] != "DO") {
                 m_enabled = false;
-                syslog(LOG_ERR, "Attempted to enable DO sensor, but reply was from a %s sensor", result[1].c_str());
+                syslog(LOG_ERR, "%s:%d: Attempted to enable DO sensor, but reply was from a %s sensor", __FUNCTION__, __LINE__, result[1].c_str());
                 syslog(LOG_ERR, "Reply from sensor confused me: %s", r.c_str());
             }
             else {
-                syslog(LOG_INFO, "DO Sensor is enabled with sensor version %s", m_version.c_str());
+                syslog(LOG_INFO, "%s:%d: DO Sensor is enabled with sensor version %s", __FUNCTION__, __LINE__, m_version.c_str());
                 std::cout << "DO Sensor is enabled with sensor version " << m_version << std::endl;
                 m_enabled = true;
             }
@@ -78,7 +78,7 @@ void DissolvedOxygen::response(int cmd, uint8_t *buffer, int size)
         m_callback(cmd, r);
     }
     catch (const std::bad_function_call& e) {
-        syslog(LOG_ERR, "exception executing callback function: %s\n", e.what());
+        syslog(LOG_ERR, "%s:%d: exception executing callback function: %s\n", __FUNCTION__, __LINE__, e.what());
     }
 }
 
@@ -104,21 +104,21 @@ void DissolvedOxygen::handleCalibration(std::string response)
     else if (result.size() == 2) {
         if (result[0] != "?CAL") {
             m_calibration = 0;
-            syslog(LOG_ERR, "Reply from sensor confused me: %s", response.c_str());
+            syslog(LOG_ERR, "%s:%d: Reply from sensor confused me: %s", __FUNCTION__, __LINE__, response.c_str());
         }
         else {
             try {
                 m_calibration = std::stoi(result.at(1));
             }
             catch (std::exception &e) {
-                syslog(LOG_ERR, "Calibration query returned a non number: %s", response.c_str());
+                syslog(LOG_ERR, "%s:%d: Calibration query returned a non number: %s", __FUNCTION__, __LINE__, response.c_str());
             }
             syslog(LOG_INFO, "Device has %d point calibration", m_calibration);
             std::cout << "Device has " << m_calibration << " point calibration" << std::endl;
         }
     }
     else {
-        syslog(LOG_ERR, "Reply from sensor confused me: %s", response.c_str());
+        syslog(LOG_ERR, "Reply from sensor confused me: %s", __FUNCTION__, __LINE__, response.c_str());
         m_enabled = false;
     }
 }
@@ -131,7 +131,7 @@ void DissolvedOxygen::handleStatusResponse(std::string response)
         if (results[0] != "?STATUS") {
             m_lastVoltage = 0.0;
             m_lastResetReason = 'U';
-            syslog(LOG_ERR, "Reply from sensor confused me: %s", response.c_str());
+            syslog(LOG_ERR, "%s:%d: Reply from sensor confused me: %s", __FUNCTION__, __LINE__, response.c_str());
         }
         else {
             try {
@@ -139,13 +139,13 @@ void DissolvedOxygen::handleStatusResponse(std::string response)
                 m_lastResetReason = results[1];
             }
             catch (std::exception &e) {
-                syslog(LOG_ERR, "Status query returned a non number: %s", response.c_str());                
+                syslog(LOG_ERR, "%s:%d: Status query returned a non number: %s", __FUNCTION__, __LINE__, response.c_str());                
             }
         }
     }
     else {
         m_lastVoltage = 0.0;
         m_lastResetReason = 'U';
-        syslog(LOG_ERR, "Reply from sensor confused me: %s", response.c_str());
+        syslog(LOG_ERR, "%s:%d: Reply from sensor confused me: %s", __FUNCTION__, __LINE__, response.c_str());
     }
 }
