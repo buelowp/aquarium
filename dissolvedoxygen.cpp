@@ -113,25 +113,38 @@ void DissolvedOxygen::handleCalibration(std::string response)
             catch (std::exception &e) {
                 syslog(LOG_ERR, "%s:%d: Calibration query returned a non number: %s", __FUNCTION__, __LINE__, response.c_str());
             }
-            syslog(LOG_INFO, "Device has %d point calibration", m_calibration);
+            syslog(LOG_INFO, "%s:%d: Device has %d point calibration", __FUNCTION__, __LINE__, m_calibration);
             std::cout << "Device has " << m_calibration << " point calibration" << std::endl;
         }
     }
     else {
-        syslog(LOG_ERR, "Reply from sensor confused me: %s", __FUNCTION__, __LINE__, response.c_str());
+        syslog(LOG_ERR, "%s:%d: Reply from sensor confused me: %s", __FUNCTION__, __LINE__, response.c_str());
         m_enabled = false;
     }
 }
 
+/**
+ * Sensor response handler
+ * response is "?STATUS,P,3.85"
+ * results[0] = ?STATUS
+ * results[1] = P
+ * results[2] = 3.85
+ * That tests to be true in the debugger and with print statments (I can't find trailing whitespace or unprintables)
+ * However, response[0].compare("?STATUS") always returns a value indicating the strings are not equal
+ * Same with strcmp() and response[0] == "?STATUS"
+ * 
+ * What the heck am I doing wrong?
+ */
 void DissolvedOxygen::handleStatusResponse(std::string response)
 {
     std::vector<std::string> results = split(response, ',');
-    
+
     if (results.size() == 3) {
-        if (results[0] != "?STATUS") {
+        if (strcmp(results[0].c_str(), "?STATUS") != 0) {
             m_lastVoltage = 0.0;
             m_lastResetReason = 'U';
             syslog(LOG_ERR, "%s:%d: Reply from sensor confused me: %s", __FUNCTION__, __LINE__, response.c_str());
+            std::cout << "Error comparing " << results[0] << std::endl;
         }
         else {
             try {

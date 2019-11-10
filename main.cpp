@@ -455,13 +455,13 @@ void sendTempData(const struct LocalConfig &lc)
     static int count = 0;
     float tc;
     float tf;
-    std::string payload("{\"temperature\":\"{");
+    std::string payload("{\"temperature\":\"[{");
     std::string aio;
     
     if (!lc.mqttEnabled && !lc.aioEnabled) {
         if (lc.temp) {
             lc.temp->getTemperature(tc, tf);
-            payload.append("\n\t\"Celsius\":" + std::to_string(tc) + "\n\t\"Farenheit\":" + std::to_string(tf) + "\n}\n}");
+            payload.append("\"Celsius\":" + std::to_string(tc) + "\"Farenheit\":" + std::to_string(tf) + "}]}");
             std::cout << payload << std::endl;
         }
 /*        
