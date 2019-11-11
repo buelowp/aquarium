@@ -26,7 +26,7 @@
 #include "atlasscientifici2c.h"
 
 AtlasScientificI2C::AtlasScientificI2C(uint8_t device, uint8_t address) : 
-    m_device(device), m_address(address)
+    m_address(address), m_device(device)
 {
     char filename[40];
     sprintf(filename, "/dev/i2c-%d", m_device);
@@ -116,7 +116,8 @@ std::vector<std::string> AtlasScientificI2C::split(const std::string& s, char de
    std::istringstream tokenStream(s);
    while (std::getline(tokenStream, token, delimiter))
    {
-      tokens.push_back(token);
+        token.erase(std::remove_if(token.begin(), token.end(), []( auto const& c ) -> bool { return !std::isprint(c); } ), token.end());
+        tokens.push_back(token);
    }
    return tokens;
 }

@@ -31,6 +31,7 @@
 #include <sstream>
 #include <iostream>
 #include <cstring>
+#include <algorithm>
 
 #include <stdio.h>
 #include <stdlib.h>

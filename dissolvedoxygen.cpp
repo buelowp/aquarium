@@ -38,6 +38,7 @@ void DissolvedOxygen::response(int cmd, uint8_t *buffer, int size)
 {
     std::string r;
     std::vector<std::string> result;
+    std::string DO("DO");
     
     for (int i = 0; i < size; i++) {
         r += static_cast<char>(buffer[i]);
@@ -48,14 +49,13 @@ void DissolvedOxygen::response(int cmd, uint8_t *buffer, int size)
         result = split(r, ',');
         if (result.size() == 3) {
             m_version = result[2];
-            if (result[1] != "DO") {
+            if (result[1] != DO) {
                 m_enabled = false;
                 syslog(LOG_ERR, "%s:%d: Attempted to enable DO sensor, but reply was from a %s sensor", __FUNCTION__, __LINE__, result[1].c_str());
                 syslog(LOG_ERR, "Reply from sensor confused me: %s", r.c_str());
             }
             else {
                 syslog(LOG_INFO, "%s:%d: DO Sensor is enabled with sensor version %s", __FUNCTION__, __LINE__, m_version.c_str());
-                std::cout << "DO Sensor is enabled with sensor version " << m_version << std::endl;
                 m_enabled = true;
             }
         }
@@ -94,6 +94,7 @@ void DissolvedOxygen::getLastResponse(std::string &r)
 void DissolvedOxygen::handleCalibration(std::string response)
 {
     std::vector<std::string> result;
+    std::string cal("?CAL");
     
     result = split(response, ',');
     
@@ -102,7 +103,7 @@ void DissolvedOxygen::handleCalibration(std::string response)
         return;
     }
     else if (result.size() == 2) {
-        if (result[0] != "?CAL") {
+        if (result[0] != cal) {
             m_calibration = 0;
             syslog(LOG_ERR, "%s:%d: Reply from sensor confused me: %s", __FUNCTION__, __LINE__, response.c_str());
         }
@@ -114,7 +115,6 @@ void DissolvedOxygen::handleCalibration(std::string response)
                 syslog(LOG_ERR, "%s:%d: Calibration query returned a non number: %s", __FUNCTION__, __LINE__, response.c_str());
             }
             syslog(LOG_INFO, "%s:%d: Device has %d point calibration", __FUNCTION__, __LINE__, m_calibration);
-            std::cout << "Device has " << m_calibration << " point calibration" << std::endl;
         }
     }
     else {
@@ -123,28 +123,17 @@ void DissolvedOxygen::handleCalibration(std::string response)
     }
 }
 
-/**
- * Sensor response handler
- * response is "?STATUS,P,3.85"
- * results[0] = ?STATUS
- * results[1] = P
- * results[2] = 3.85
- * That tests to be true in the debugger and with print statments (I can't find trailing whitespace or unprintables)
- * However, response[0].compare("?STATUS") always returns a value indicating the strings are not equal
- * Same with strcmp() and response[0] == "?STATUS"
- * 
- * What the heck am I doing wrong?
- */
 void DissolvedOxygen::handleStatusResponse(std::string response)
 {
     std::vector<std::string> results = split(response, ',');
+    std::string status("?STATUS");
 
     if (results.size() == 3) {
-        if (strcmp(results[0].c_str(), "?STATUS") != 0) {
+        if (results[0] != status) {
             m_lastVoltage = 0.0;
             m_lastResetReason = 'U';
             syslog(LOG_ERR, "%s:%d: Reply from sensor confused me: %s", __FUNCTION__, __LINE__, response.c_str());
-            std::cout << "Error comparing " << results[0] << std::endl;
+            std::cout << "Error comparing " << results[0] << " and " << status << ", results[0] size is " << results[0].size() << std::endl;
         }
         else {
             try {
@@ -162,3 +151,62 @@ void DissolvedOxygen::handleStatusResponse(std::string response)
         syslog(LOG_ERR, "%s:%d: Reply from sensor confused me: %s", __FUNCTION__, __LINE__, response.c_str());
     }
 }
+
+void DissolvedOxygen::calibrate(int cmd, uint8_t buf[], int size)
+{
+    std::vector<uint8_t> payload;
+    
+    payload.push_back('C');
+    payload.push_back('a');
+    payload.push_back('l');
+    payload.push_back(',');
+    
+    switch (cmd) {
+        case LOW:
+            payload.push_back('l');
+            payload.push_back('o');
+            payload.push_back('w');
+            payload.push_back(',');
+            for (int i = 0; i < size; i++) {
+                payload.push_back(buf[i]);
+            }
+            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 900);
+            break;
+        case MID:
+            payload.push_back('m');
+            payload.push_back('i');
+            payload.push_back('d');
+            payload.push_back(',');
+            for (int i = 0; i < size; i++) {
+                payload.push_back(buf[i]);
+            }
+            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 900);
+            break;
+        case HIGH:
+            payload.push_back('h');
+            payload.push_back('i');
+            payload.push_back('g');
+            payload.push_back('h');
+            payload.push_back(',');
+            for (int i = 0; i < size; i++) {
+                payload.push_back(buf[i]);
+            }
+            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 900);
+            break;
+        case CLEAR:
+            payload.push_back('c');
+            payload.push_back('l');
+            payload.push_back('e');
+            payload.push_back('a');
+            payload.push_back('r');
+            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 300);
+            break;
+        case QUERY:
+            payload.push_back('?');
+            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 300);
+            break;
+        default:
+            break;
+    }
+}
+

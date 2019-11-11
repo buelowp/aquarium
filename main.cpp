@@ -38,6 +38,7 @@
 #include <libgen.h>
 #include <errno.h>
 #include <mcp3424.h>
+#include <nlohmann/json.hpp>
 
 #include "potentialhydrogen.h"
 #include "dissolvedoxygen.h"
@@ -429,14 +430,14 @@ void sendFlowRateData(const struct LocalConfig &lc)
 {
     static int count = 0;
     static bool warmup = true;
-    std::string payload;
+    nlohmann::json j;
     std::string aio = std::to_string(lc.fr->gpm());
 
-    payload.append("{\"gpm\":\"" + std::to_string(lc.fr->gpm()) + "\",\n");
-    payload.append("\"lpm\":\"" + std::to_string(lc.fr->lpm()) + "\",\n");
-    payload.append("\"hertz\":\"" + std::to_string(lc.fr->hertz()) + "\"}\n");
-
-    std::cout << payload << std::endl;
+    j["aquarium"]["flowrate"]["gpm"] = lc.fr->gpm();
+    j["aquarium"]["flowrate"]["lpm"] = lc.fr->lpm();
+    j["aquarium"]["flowrate"]["hertz"] = lc.fr->hertz();
+    
+    std::cout << j.dump(2) << std::endl;
     /*
     if (count++ > 60) {
         g_aio->publish(NULL, AIO_FLOWRATE_FEED, aio.size(), aio.c_str());
@@ -455,14 +456,15 @@ void sendTempData(const struct LocalConfig &lc)
     static int count = 0;
     float tc;
     float tf;
-    std::string payload("{\"temperature\":\"[{");
     std::string aio;
+    nlohmann::json j;
     
     if (!lc.mqttEnabled && !lc.aioEnabled) {
         if (lc.temp) {
             lc.temp->getTemperature(tc, tf);
-            payload.append("\"Celsius\":" + std::to_string(tc) + "\"Farenheit\":" + std::to_string(tf) + "}]}");
-            std::cout << payload << std::endl;
+            j["aquarium"]["temperature"]["celsius"] = tc;
+            j["aquarium"]["temperature"]["farenheit"] = tf;
+            std::cout << j.dump(4) << std::endl;
         }
 /*        
         if (count++ > 60) {
@@ -524,7 +526,7 @@ bool openMCP3424(struct LocalConfig &lc)
 		return false;
 	}
 
-	mcp3424_init(lc.adc, fd, lc.adc_address, MCP3424_RESOLUTION_14);
+	mcp3424_init(lc.adc, fd, lc.adc_address, MCP3424_RESOLUTION_18);
     mcp3424_set_conversion_mode(lc.adc, MCP3424_CONVERSION_MODE_CONTINUOUS);
     fprintf(stdout, "MCP 3424 setup complete for address 0x%x, fd %d\n", lc.adc_address, lc.adc->fd);
     syslog(LOG_INFO, "MCP 3424 setup complete for address 0x%x, fd %d", lc.adc_address, lc.adc->fd);
@@ -609,8 +611,8 @@ void getWaterLevel(const struct LocalConfig &lc)
 {
     static int count = 0;
     unsigned int result;
-    std::string payload;
     std::string aio;
+    nlohmann::json j;
     
     result = mcp3424_get_raw(lc.adc, lc.wl_channel);
     if (lc.adc->err) {
@@ -618,10 +620,8 @@ void getWaterLevel(const struct LocalConfig &lc)
         std::cerr << "Unable to get data, error " << lc.adc->errstr << std::endl;
     }
     else {
-    payload += "{\"waterlevel\":";
-    payload += std::to_string(result);
-    payload += "}";
-    std::cout << payload << std::endl;
+        j["aquarium"]["waterlevel"] = result;
+        std::cout << j.dump(4) << std::endl;
     /*
     if (count++ > 60) {
         aio = std::to_string(result);
@@ -765,7 +765,9 @@ int main(int argc, char *argv[])
     openMCP3424(lc);
 
     lc.oxygen->sendInfoCommand();
+    lc.oxygen->calibrate(DissolvedOxygen::QUERY, nullptr, 0);
     lc.oxygen->sendStatusCommand();
+    
     lc.ph->sendInfoCommand();
     lc.ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
     lc.ph->sendStatusCommand();

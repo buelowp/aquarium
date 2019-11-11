@@ -36,12 +36,18 @@
 class DissolvedOxygen : public AtlasScientificI2C
 {
 public:
+    static const int CLEAR = 100;
+    static const int LOW = 101;
+    static const int MID = 102;
+    static const int HIGH = 103;
+    static const int QUERY = 104;
+ 
     DissolvedOxygen(uint8_t, uint8_t);
     virtual ~DissolvedOxygen();
 
     void getLastResponse(std::string&);
     void setCallback(std::function<void(int, std::string)> cbk) { m_callback = cbk; }
-    
+    void calibrate(int, uint8_t*, int);    
     void response(int cmd, uint8_t*, int) override;
 
 private:

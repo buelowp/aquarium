@@ -39,6 +39,7 @@ void PotentialHydrogen::response(int cmd, uint8_t *buffer, int size)
 {
     std::string r;
     std::vector<std::string> result;
+    std::string ph("pH");
     
     for (int i = 0; i < size; i++) {
         r += static_cast<char>(buffer[i]);
@@ -49,7 +50,7 @@ void PotentialHydrogen::response(int cmd, uint8_t *buffer, int size)
         result = split(r, ',');
         if (result.size() == 3) {
             m_version = result[2];
-            if (result[1] != "pH") {
+            if (result[1] != ph) {
                 m_enabled = false;
                 syslog(LOG_ERR, "%s:%d: Attempted to enable pH sensor, but reply was from a %s sensor", __FUNCTION__, __LINE__, result[1].c_str());
                 syslog(LOG_ERR, "%s:%d: Reply from sensor confused me: %s", __FUNCTION__, __LINE__, r.c_str());
@@ -205,6 +206,7 @@ void PotentialHydrogen::getTempCompensation()
 void PotentialHydrogen::handleCalibration(std::string response)
 {
     std::vector<std::string> result;
+    std::string cal("?CAL");
     
     result = split(response, ',');
     
@@ -213,7 +215,7 @@ void PotentialHydrogen::handleCalibration(std::string response)
         return;
     }
     else if (result.size() == 2) {
-        if (result[0] != "?CAL") {
+        if (result[0] != cal) {
             m_calibration = 0;
             syslog(LOG_ERR, "%s:%d: Reply from sensor confused me: %s", __FUNCTION__, __LINE__, response.c_str());
         }
@@ -225,7 +227,6 @@ void PotentialHydrogen::handleCalibration(std::string response)
                 syslog(LOG_ERR, "%s:%d: Calibration query returned a non number: %s", __FUNCTION__, __LINE__, response.c_str());
             }
             syslog(LOG_INFO, "%s:%d: Device has %d point calibration", __FUNCTION__, __LINE__, m_calibration);
-            std::cout << "Device has " << m_calibration << " point calibration" << std::endl;
         }
     }
     else {
@@ -237,9 +238,10 @@ void PotentialHydrogen::handleCalibration(std::string response)
 void PotentialHydrogen::handleStatusResponse(std::string response)
 {
     std::vector<std::string> results = split(response, ',');
+    std::string status("?STATUS");
     
     if (results.size() == 3) {
-        if (results[0] == "?STATUS") {
+        if (results[0] == status) {
             try {
                 m_lastVoltage = std::stof(results[2]);
                 m_lastResetReason = results[1];
