@@ -70,11 +70,6 @@
 #define YELLOW_LED          12
 #define RED_LED             18
 
-AdafruitIO *g_aio;
-MQTTClient *g_mqtt;
-bool g_aioConnected;
-bool g_mqttConnected;
-
 struct LocalConfig {
     AdafruitIO *g_aio;
     MQTTClient *g_mqtt;

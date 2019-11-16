@@ -8987,6 +8987,8 @@ Source: http://www.osram.convergy.de/</description>
 <part name="GND23" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
 <part name="GND24" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
 <part name="GND25" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
+<part name="J23" library="SparkFun-Connectors" library_urn="urn:adsk.eagle:library:513" deviceset="CONN_02" device="" package3d_urn="urn:adsk.eagle:package:38039/1" value="GPIO"/>
+<part name="GND26" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
 </parts>
 <sheets>
 <sheet>
@@ -9353,6 +9355,13 @@ Source: http://www.osram.convergy.de/</description>
 <instance part="GND25" gate="1" x="137.16" y="22.86" smashed="yes">
 <attribute name="VALUE" x="138.176" y="16.51" size="1.778" layer="96" rot="R90"/>
 </instance>
+<instance part="J23" gate="G$1" x="99.06" y="132.08" smashed="yes" rot="R270">
+<attribute name="VALUE" x="94.234" y="134.62" size="1.778" layer="96" font="vector" rot="R270"/>
+<attribute name="NAME" x="104.648" y="134.62" size="1.778" layer="95" font="vector" rot="R270"/>
+</instance>
+<instance part="GND26" gate="1" x="101.6" y="109.22" smashed="yes">
+<attribute name="VALUE" x="99.06" y="106.68" size="1.778" layer="96"/>
+</instance>
 </instances>
 <busses>
 </busses>
@@ -9491,6 +9500,11 @@ Source: http://www.osram.convergy.de/</description>
 <pinref part="J25" gate="J$1" pin="2"/>
 <wire x1="137.16" y1="38.1" x2="137.16" y2="25.4" width="0.1524" layer="91"/>
 <pinref part="GND25" gate="1" pin="GND"/>
+</segment>
+<segment>
+<pinref part="J23" gate="G$1" pin="2"/>
+<wire x1="101.6" y1="124.46" x2="101.6" y2="111.76" width="0.1524" layer="91"/>
+<pinref part="GND26" gate="1" pin="GND"/>
 </segment>
 </net>
 <net name="+5V" class="0">
@@ -10090,6 +10104,18 @@ Source: http://www.osram.convergy.de/</description>
 <pinref part="R7" gate="G$1" pin="1"/>
 <wire x1="386.08" y1="129.54" x2="386.08" y2="142.24" width="0.1524" layer="91"/>
 <label x="386.08" y="142.24" size="1.016" layer="95" rot="R90" xref="yes"/>
+</segment>
+</net>
+<net name="GPIO_11" class="0">
+<segment>
+<pinref part="ONION" gate="OMEGA2+" pin="I2S_CLK/GPIO3"/>
+<wire x1="314.96" y1="226.06" x2="294.64" y2="226.06" width="0.1524" layer="91"/>
+<label x="294.64" y="226.06" size="1.016" layer="95" rot="R180" xref="yes"/>
+</segment>
+<segment>
+<pinref part="J23" gate="G$1" pin="1"/>
+<wire x1="99.06" y1="124.46" x2="99.06" y2="119.38" width="0.1524" layer="91"/>
+<label x="99.06" y="119.38" size="1.016" layer="95" rot="R270" xref="yes"/>
 </segment>
 </net>
 </nets>
