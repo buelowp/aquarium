@@ -43,6 +43,7 @@ public:
     ~Temperature();
     
     void getTemperature(float&, float&);
+    bool enabled() { return m_enabled; }
     
 private:
     std::string m_device;

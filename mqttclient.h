@@ -47,6 +47,7 @@ public:
     MQTTClient(std::string &id, std::string host, int port = 1883);
     virtual ~MQTTClient();
 
+    bool isConnected() { return m_connected; }
     void setGenericCallback(std::function<void(CallbackType, int)> cbk) { m_genericCallback = cbk; }
     void setMessageCallback(std::function<void(int, std::string, uint32_t*, int)> cbk) { m_messageCallback = cbk; }
     void setErrorCallback(std::function<void(std::string, int)> cbk) { m_errorCallback = cbk; }
@@ -69,6 +70,7 @@ private:
     std::function<void(std::string, int)> m_errorCallback;
     int m_port;
     int m_debug;
+    int m_connected;
 };
 
 #endif // MQTTClient_H

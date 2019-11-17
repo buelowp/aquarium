@@ -100,11 +100,61 @@ struct LocalConfig {
     int o2sensor_address;
     int phsensor_address;
     int onewirepin;
-    int flowrateenablepin;
     int red_led;
     int yellow_led;
     int green_led;
 };
+
+struct LocalConfig *g_localConfig;
+
+void eternalBlinkAndDie(int pin, int millihz)
+{
+    int state = 0;
+    GpioInterrupt::instance()->value(pin, state);
+    while (1) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(millihz));
+        state ^= 1UL << 0;
+        GpioInterrupt::instance()->setValue(pin, state); 
+    }
+}
+
+void setNormalDisplay()
+{
+    GpioInterrupt::instance()->setValue(g_localConfig->green_led, 1);
+    GpioInterrupt::instance()->setValue(g_localConfig->yellow_led, 0);
+    GpioInterrupt::instance()->setValue(g_localConfig->red_led, 0);    
+}
+
+void setWarningDisplay()
+{
+    GpioInterrupt::instance()->setValue(g_localConfig->green_led, 0);
+    GpioInterrupt::instance()->setValue(g_localConfig->yellow_led, 1);
+    GpioInterrupt::instance()->setValue(g_localConfig->red_led, 0);    
+}
+
+void setErrorDisplay()
+{
+    GpioInterrupt::instance()->setValue(g_localConfig->green_led, 0);
+    GpioInterrupt::instance()->setValue(g_localConfig->yellow_led, 0);
+    GpioInterrupt::instance()->setValue(g_localConfig->red_led, 1);    
+}
+
+void initializeLeds(struct LocalConfig &lc)
+{
+    GpioInterrupt::instance()->setValue(lc.green_led, 1);
+    GpioInterrupt::instance()->setValue(lc.yellow_led, 0);
+    GpioInterrupt::instance()->setValue(lc.red_led, 0);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    GpioInterrupt::instance()->setValue(lc.green_led, 0);
+    GpioInterrupt::instance()->setValue(lc.yellow_led, 1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    GpioInterrupt::instance()->setValue(lc.yellow_led, 0);
+    GpioInterrupt::instance()->setValue(lc.red_led, 1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    GpioInterrupt::instance()->setValue(lc.red_led, 0);
+    GpioInterrupt::instance()->setValue(lc.green_led, 1);
+}
 
 bool cisCompare(const std::string & str1, const std::string &str2)
 {
@@ -179,7 +229,6 @@ void generateLocalId(struct LocalConfig *lc)
 	}
 
     syslog(LOG_INFO, "Assigning %s as device name", lc->localId.c_str());
-    fprintf(stderr, "Assigning %s as device name\n", lc->localId.c_str());
 }
 
 bool readConfig(struct LocalConfig *lc)
@@ -215,6 +264,7 @@ bool readConfig(struct LocalConfig *lc)
 //        std::cerr << __FUNCTION__ << ": config_read: error in file " << config_error_file(&config) << ", line " << config_error_line(&config) << std::endl;
         fprintf(stderr, "%s:%d - %s\n", config_error_file(&config), config_error_line(&config), config_error_text(&config));
         config_destroy(&config);
+        setErrorDisplay();
         return false;
     }
     else {
@@ -308,11 +358,6 @@ bool readConfig(struct LocalConfig *lc)
         else
             lc->onewirepin = 1;
  
-        if (config_lookup_int(&config, "flowrate_enable_pin", &owpin) == CONFIG_TRUE)
-            lc->flowrateenablepin = owpin;
-        else
-            lc->flowrateenablepin = 12;
-
         if (config_lookup_int(&config, "red_led", &red) == CONFIG_TRUE)
             lc->red_led = red;
         else
@@ -435,7 +480,7 @@ void sendFlowRateData(const struct LocalConfig &lc)
     std::cout << j.dump(2) << std::endl;
     /*
     if (count++ > 60) {
-        g_aio->publish(NULL, AIO_FLOWRATE_FEED, aio.size(), aio.c_str());
+        lc.g_aio->publish(NULL, AIO_FLOWRATE_FEED, aio.size(), aio.c_str());
         count = 1;
         
         if (warmup)
@@ -463,7 +508,7 @@ void sendTempData(const struct LocalConfig &lc)
         }
 /*        
         if (count++ > 60) {
-            g_aio->publish(NULL, AIO_TEMP_FEED, aio.size(), aio.c_str());
+            lc.g_aio->publish(NULL, AIO_TEMP_FEED, aio.size(), aio.c_str());
             count = 1;
         }
         g_mqtt->publish(NULL, "aquarium/temperature", payload.size(), payload.c_str());
@@ -471,43 +516,32 @@ void sendTempData(const struct LocalConfig &lc)
     }
 }
 
-void aioGenericCallback(AdafruitIO::CallbackType type, int mid)
+void aioGenericCallback(AdafruitIO::CallbackType type, int code)
 {
     switch (type) {
         case AdafruitIO::CallbackType::CONNECT:
-            g_aioConnected = true;
+            syslog(LOG_INFO, "AdafruitIO connected");
             break;
         case AdafruitIO::CallbackType::DISCONNECT:
-            g_aioConnected = false;
+            syslog(LOG_NOTICE, "AdafruitIO disconnect event: %d", code);
             break;
         default:
             break;
     }
 }
 
-void mqttGenericCallback(MQTTClient::CallbackType type, int mid)
+void mqttGenericCallback(MQTTClient::CallbackType type, int code)
 {
     switch (type) {
         case MQTTClient::CallbackType::CONNECT:
-            g_mqttConnected = true;
+            syslog(LOG_INFO, "MQTT connected");
             break;
         case MQTTClient::CallbackType::DISCONNECT:
-            g_mqttConnected = false;
+            syslog(LOG_NOTICE, "MQTT disconnect event: %d", code);
             break;
         default:
             break;
     }
-}
-
-// ttps://io.adafruit.com/api/v2/{username}/feeds/{feed_key}/data
-void sendAioData(std::string &topic, uint8_t *payload, int payloadlen)
-{
-    g_aio->publish(NULL, topic.c_str(), payloadlen, payload);
-}
-
-void sendLocalData(std::string &topic, uint8_t *payload, int payloadlen)
-{
-    g_mqtt->publish(NULL, topic.c_str(), payloadlen, payload);
 }
 
 bool openMCP3424(struct LocalConfig &lc)
@@ -518,6 +552,7 @@ bool openMCP3424(struct LocalConfig &lc)
 	if (fd == -1) {
 		syslog(LOG_ERR, "error: open: %s\n", strerror(errno));
         std::cerr << "open: " << strerror(errno) << std::endl;
+        setWarningDisplay();
 		return false;
 	}
 
@@ -569,6 +604,7 @@ bool parse_args(int argc, char **argv, struct LocalConfig &config)
 	        default:
                 syslog(LOG_ERR, "Unexpected command line argument given");
 	            usage(argv[0]);
+                return false;
 			}
 		}
 	}
@@ -600,6 +636,9 @@ void startOneWire(struct LocalConfig &lc)
     system(program.c_str());
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     lc.temp = new Temperature();
+    
+    if (!lc.temp->enabled())
+        setWarningDisplay();
 }
 
 void getWaterLevel(const struct LocalConfig &lc)
@@ -620,48 +659,12 @@ void getWaterLevel(const struct LocalConfig &lc)
     /*
     if (count++ > 60) {
         aio = std::to_string(result);
-        g_aio->publish(NULL, AIO_LEVEL_FEED, aio.size(), aio.c_str());
+        lc.g_aio->publish(NULL, AIO_LEVEL_FEED, aio.size(), aio.c_str());
         count = 1;
     }
-    g_mqtt->publish(NULL, "aquarium/level", payload.size(), payload.c_str());
+    lc.g_mqtt->publish(NULL, "aquarium/level", payload.size(), payload.c_str());
     */
     }
-}
-
-bool turnOnFlowSensor(struct LocalConfig &lc)
-{
-    int fd;
-    char buf[255];
-    
-    memset(buf, '\0', 255);
-    if ((fd = open("/sys/class/gpio/export", O_WRONLY)) < 0) {
-        syslog(LOG_ERR, "Cannot export pin %d, error: %s(%d)", lc.flowrateenablepin, strerror(errno), errno);
-        return false;
-    }
-    sprintf(buf, "%d", lc.flowrateenablepin); 
-    write(fd, buf, strlen(buf));
-    close(fd);
-    
-    memset(buf, '\0', 255);
-    sprintf(buf, "/sys/class/gpio/gpio%d/direction", lc.flowrateenablepin);
-    if ((fd = open(buf, O_WRONLY)) < 0) {
-        syslog(LOG_ERR, "Cannot set pin direction for pin %d, error: %s(%d)", lc.flowrateenablepin, strerror(errno), errno);
-        return false;
-    }
-    write(fd, "out", 3);
-    close(fd);
-
-    memset(buf, '\0', 255);
-    sprintf(buf, "/sys/class/gpio/gpio%d/value", lc.flowrateenablepin);
-    if ((fd = open(buf, O_WRONLY)) < 0){
-        syslog(LOG_ERR, "Cannot set pin direction for pin %d, error: %s(%d)", lc.flowrateenablepin, strerror(errno), errno);
-        return false;
-    }
-    sprintf(buf, "%d", 1);
-    write(fd, buf, 1);
-    close(fd);
-    std::cout << "Exported pin " << lc.flowrateenablepin << " to turn on flow rate sensor" << std::endl;
-    return true;
 }
 
 void mainloop(struct LocalConfig &lc)
@@ -700,23 +703,6 @@ void mainloop(struct LocalConfig &lc)
     tempUpdate.stop();
 }
 
-void initializeLeds(struct LocalConfig &lc)
-{
-    GpioInterrupt::instance()->setValue(lc.green_led, 1);
-    GpioInterrupt::instance()->setValue(lc.yellow_led, 0);
-    GpioInterrupt::instance()->setValue(lc.red_led, 0);
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    GpioInterrupt::instance()->setValue(lc.green_led, 0);
-    GpioInterrupt::instance()->setValue(lc.yellow_led, 1);
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    GpioInterrupt::instance()->setValue(lc.yellow_led, 0);
-    GpioInterrupt::instance()->setValue(lc.red_led, 1);
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    GpioInterrupt::instance()->setValue(lc.red_led, 0);
-    GpioInterrupt::instance()->setValue(lc.green_led, 1);
-}
-
 int main(int argc, char *argv[])
 {
     struct LocalConfig lc;
@@ -728,9 +714,6 @@ int main(int argc, char *argv[])
     syslog(LOG_NOTICE, "Application startup");
     setConfigDefaults(lc);
     
-    parse_args(argc, argv, lc);
-    readConfig(&lc);
-
     if (!GpioInterrupt::instance()->addPin(lc.green_led, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
         syslog(LOG_ERR, "Unable to open GPIO for green led");
     
@@ -740,10 +723,18 @@ int main(int argc, char *argv[])
     if (!GpioInterrupt::instance()->addPin(lc.red_led, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
         syslog(LOG_ERR, "Unable to open GPIO for red led");
 
+    initializeLeds(lc);
+
     GpioInterrupt::instance()->addPin(lc.flowRatePin);
     GpioInterrupt::instance()->setPinCallback(lc.flowRatePin, flowRateCallback);
     
-    initializeLeds(lc);
+    if (!parse_args(argc, argv, lc)) {
+        eternalBlinkAndDie(lc.red_led, 2000);
+    }
+    // if this goes badly, just die but leave the error LED blinking at 1 hz
+    if (!readConfig(&lc)) {
+        eternalBlinkAndDie(lc.red_led, 1000);
+    }
     
     startOneWire(lc);
     
@@ -752,12 +743,12 @@ int main(int argc, char *argv[])
     
     if (lc.mqttEnabled)
         lc.g_mqtt = new MQTTClient(lc.localId, lc.mqttServer, lc.mqttPort);
-        
-    turnOnFlowSensor(lc);
     
     GpioInterrupt::instance()->start();
 
     openMCP3424(lc);
+    
+    g_localConfig = &lc;
 
     lc.oxygen->sendInfoCommand();
     lc.oxygen->calibrate(DissolvedOxygen::QUERY, nullptr, 0);
