@@ -30,6 +30,7 @@
 #include <functional>
 #include <iostream>
 #include <iterator>
+#include <iomanip>
 
 #include "atlasscientifici2c.h"
 
@@ -65,15 +66,18 @@ public:
     void getTempCompensation();
     std::string getLastReason() { return m_lastResetReason; }
     double getVoltage() { return m_lastVoltage; }
+    double getPH() { return m_lastPHValue; }
     
 private:
     void handleCalibration(std::string);
     void handleStatusResponse(std::string);
+    void handleReadResponse(std::string&);
     
     std::function<void(int, std::string)> m_callback;
     int m_calibration;
     std::string m_lastResetReason;
     double m_lastVoltage;
+    double m_lastPHValue;
 };
 
 #endif // DISSOLVEDOXYGEN_H

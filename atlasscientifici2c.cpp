@@ -106,7 +106,7 @@ bool AtlasScientificI2C::sendStatusCommand()
 bool AtlasScientificI2C::sendReadCommand()
 {
     uint8_t i[1] = {'r'};
-    return sendCommand(READING, i, 1, 600);
+    return sendCommand(READING, i, 1, 900);
 }
 
 std::vector<std::string> AtlasScientificI2C::split(const std::string& s, char delimiter)

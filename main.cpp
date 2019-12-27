@@ -168,10 +168,17 @@ void phCallback(int cmd, std::string response)
     switch (cmd) {
         case AtlasScientificI2C::INFO:
             syslog(LOG_NOTICE, "got pH probe info event: %s\n", response.c_str());
+            std::cout << "Got an INFO response: " << response << std::endl;
             break;
         case AtlasScientificI2C::STATUS:
             syslog(LOG_NOTICE, "got pH probe status event: %s\n", response.c_str());
             std::cout << "Got pH status event: " << response << std::endl;
+            break;
+        case AtlasScientificI2C::CALIBRATE:
+            std::cout << "PH Calibration check shows " << response << std::endl;
+            break;
+        case AtlasScientificI2C::READING:
+            std::cout << "PH Value response " << response << std::endl;
             break;
         default:
             break;
@@ -183,10 +190,14 @@ void doCallback(int cmd, std::string response)
     switch (cmd) {
         case AtlasScientificI2C::INFO:
             syslog(LOG_NOTICE, "got DO probe info event: %s\n", response.c_str());
+            std::cout << "Got pH status event: " << response << std::endl;
             break;
         case AtlasScientificI2C::STATUS:
             syslog(LOG_NOTICE, "got DO probe status event: %s\n", response.c_str());
             std::cout << "Got DO status event: " << response << std::endl;
+            break;
+        case AtlasScientificI2C::CALIBRATE:
+            std::cout << "DO Calibration check shows " << response << std::endl;
             break;
         default:
             break;
@@ -674,15 +685,15 @@ void mainloop(struct LocalConfig &lc)
     ITimer frUpdate;
     ITimer tempUpdate;
     ITimer wlUpdate;
-    auto phfunc = [lc]() { lc.ph->sendStatusCommand(); };
+    auto phfunc = [lc]() { lc.ph->sendReadCommand(); };
     auto dofunc = [lc]() { lc.oxygen->sendStatusCommand(); };
     auto frfunc = [lc]() { sendFlowRateData(lc); };
     auto tempfunc = [lc]() { sendTempData(lc); };
     auto wlfunc = [lc]() { getWaterLevel(lc); };
-/*    
-    doUpdate.setInterval(dofunc, ONE_MINUTE);
+    
+//    doUpdate.setInterval(dofunc, ONE_MINUTE);
     phUpdate.setInterval(phfunc, ONE_MINUTE);
-*/
+
 //    frUpdate.setInterval(frfunc, ONE_SECOND);
     tempUpdate.setInterval(tempfunc, ONE_MINUTE);
     wlUpdate.setInterval(wlfunc, ONE_MINUTE);
@@ -751,11 +762,12 @@ int main(int argc, char *argv[])
     g_localConfig = &lc;
 
     lc.oxygen->sendInfoCommand();
-    lc.oxygen->calibrate(DissolvedOxygen::QUERY, nullptr, 0);
-    lc.oxygen->sendStatusCommand();
-    
     lc.ph->sendInfoCommand();
+    std::this_thread::sleep_for(std::chrono::milliseconds(400));
+    lc.oxygen->calibrate(DissolvedOxygen::QUERY, nullptr, 0);
     lc.ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
+    std::this_thread::sleep_for(std::chrono::milliseconds(400));
+    lc.oxygen->sendStatusCommand();
     lc.ph->sendStatusCommand();
     
     mainloop(lc);

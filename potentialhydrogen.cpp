@@ -72,6 +72,9 @@ void PotentialHydrogen::response(int cmd, uint8_t *buffer, int size)
     case AtlasScientificI2C::STATUS:
         handleStatusResponse(r);
         break;
+    case AtlasScientificI2C::READING:
+        handleReadResponse(r);
+        break;
     default:
         break;
     }
@@ -260,5 +263,16 @@ void PotentialHydrogen::handleStatusResponse(std::string response)
         m_lastVoltage = 0.0;
         m_lastResetReason = 'U';
         syslog(LOG_ERR, "%s:%d: Reply from sensor confused me: %s", __FUNCTION__, __LINE__, response.c_str());
+    }
+}
+
+void PotentialHydrogen::handleReadResponse(std::string &response)
+{
+    response.erase(response.begin());
+    try {
+        m_lastPHValue = std::stoi(response);
+    }
+    catch (std::exception &e) {
+        std::cerr << "Unable to decide response: " << response << std::endl;
     }
 }
