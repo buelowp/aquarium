@@ -30,7 +30,6 @@
 #include <cstring>
 #include <iomanip>
 
-#include <curl/curl.h>
 #include <gpiointerruptpp.h>
 #include <adaio.h>
 #include <libconfig.h>

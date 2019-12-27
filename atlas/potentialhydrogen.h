@@ -31,6 +31,7 @@
 #include <iostream>
 #include <iterator>
 #include <iomanip>
+#include <ios>
 
 #include "atlasscientifici2c.h"
 
@@ -59,7 +60,8 @@ public:
 
     void response(int cmd, uint8_t[], int) override;
 
-    void calibrate(int, uint8_t*, int);
+    bool calibrate(int, uint8_t*, int);
+    bool calibrate(int);
     void slope();
     void setTempCompensation(uint8_t*, int);
     void setTempCompensationAndRead(uint8_t*, int);
@@ -72,6 +74,7 @@ private:
     void handleCalibration(std::string);
     void handleStatusResponse(std::string);
     void handleReadResponse(std::string&);
+    void printBuffer(std::vector<uint8_t>);
     
     std::function<void(int, std::string)> m_callback;
     int m_calibration;

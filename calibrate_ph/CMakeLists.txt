@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.0)
 
-project (aquarium)
+project (phcal)
 
 file (GLOB SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 file (GLOB HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
@@ -12,6 +12,7 @@ set (CMAKE_THREAD_PREFER_PTHREAD TRUE)
 
 find_package (Threads REQUIRED)
 
+include_directories (${CMAKE_SOURCE_DIR}/timer ${CMAKE_SOURCE_DIR}/atlas ${CMAKE_SOURCE_DIR}/app)
 add_executable (${PROJECT_NAME} ${SOURCES})
-target_link_libraries (${PROJECT_NAME} -loniondebug Threads::Threads -lcurl -lgpiointerruptpp -loniondebug -lonioni2c -ladafruitio -lmosquittopp -lconfig -lmcp3424)
+target_link_libraries (${PROJECT_NAME} Threads::Threads -lgpiointerruptpp -lconfig ${CMAKE_BINARY_DIR}/atlas/libatlas.a ${CMAKE_BINARY_DIR}/timer/libtimer.a)
 

@@ -96,7 +96,32 @@ void PotentialHydrogen::getLastResponse(std::string &r)
     }
 }
 
-void PotentialHydrogen::calibrate(int cmd, uint8_t buf[], int size)
+bool PotentialHydrogen::calibrate(int cmd)
+{
+    std::string val = std::to_string(m_lastPHValue);
+    uint8_t buf[16] = {0};
+    
+    for (int i = 0; i < val.size(); i++) {
+        buf[i] = val[i];
+    }
+    calibrate(cmd, buf, val.size());
+    return true;
+}
+
+void PotentialHydrogen::printBuffer(std::vector<uint8_t> packet)
+{
+    std::ios oldState(nullptr);
+    
+    oldState.copyfmt(std::cout);
+    std::cout << "Packet: ";
+    for (int i = 0; i < packet.size(); i++) {
+        std::cout << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(packet[i]) << " ";
+    }
+    std::cout << std::endl;
+    std::cout.copyfmt(oldState);
+}
+
+bool PotentialHydrogen::calibrate(int cmd, uint8_t buf[], int size)
 {
     std::vector<uint8_t> payload;
     
@@ -152,6 +177,7 @@ void PotentialHydrogen::calibrate(int cmd, uint8_t buf[], int size)
         default:
             break;
     }
+    return true;
 }
 
 void PotentialHydrogen::slope()
