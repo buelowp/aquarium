@@ -32,6 +32,7 @@
 #include <iterator>
 #include <iomanip>
 #include <ios>
+#include <sstream>
 
 #include "atlasscientifici2c.h"
 
@@ -74,7 +75,7 @@ private:
     void handleCalibration(std::string);
     void handleStatusResponse(std::string);
     void handleReadResponse(std::string&);
-    void printBuffer(std::vector<uint8_t>);
+    void printBuffer(std::vector<uint8_t>&);
     
     std::function<void(int, std::string)> m_callback;
     int m_calibration;

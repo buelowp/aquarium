@@ -64,8 +64,8 @@ struct LocalConfig {
     int red_led;
     int yellow_led;
     int green_led;
-    int calibration_operation;
-    bool signal;
+    int operation;
+    bool done;
 };
 
 struct LocalConfig *g_localConfig;
@@ -73,33 +73,48 @@ std::mutex g_mutex;
 
 void waitForInput()
 {
-    while (1) {
+    while (!g_localConfig->done) {
         g_mutex.lock();
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         g_mutex.unlock();
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
-    std::cout << __FUNCTION__ << std::endl;
 }
 
 void writeCalibrationData()
 {
     while (1) {
         g_mutex.lock();
-        std::cout << __FUNCTION__ << ": Sending calibration data for operation " << g_localConfig->calibration_operation << std::endl;
-        g_localConfig->ph->calibrate(g_localConfig->calibration_operation);
+        g_localConfig->ph->calibrate(g_localConfig->operation);
         g_mutex.unlock();
+        switch (g_localConfig->operation) {
+            case PotentialHydrogen::MID:
+                g_localConfig->operation = PotentialHydrogen::LOW;
+                std::cout << "Place sensor in pH 4.00 solution now." << std::endl;
+                break;
+            case PotentialHydrogen::LOW:
+                g_localConfig->operation = PotentialHydrogen::HIGH;
+                std::cout << "Place sensor in pH 10.00 solution now." << std::endl;
+                break;
+            case PotentialHydrogen::HIGH:
+                g_localConfig->ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
+                return;
+        }
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }
 
 void phCallback(int cmd, std::string response)
 {
+    int calibration = 0;
+    
     switch (cmd) {
         case AtlasScientificI2C::INFO:
             break;
         case AtlasScientificI2C::CALIBRATE:
-            std::cout << "PH Calibration check shows " << response << std::endl;
+            if (response.find("?CAL") != std::string::npos) {
+                std::cout << "There are " << response.substr(6) << " points of calibration";
+            }
             break;
         case AtlasScientificI2C::READING:
             std::cout << "PH: " << response << '\r' << std::flush;
@@ -320,14 +335,20 @@ void mainloop(struct LocalConfig &lc)
     
     setNormalDisplay();
     
+    g_localConfig->done = false;
     std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
     g_localConfig->ph->sendReadCommand();
     std::thread listener(waitForInput);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     std::thread sender(writeCalibrationData);
     ph.setInterval(phfunc, TWO_SECONDS);
-    while (1)
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+    g_localConfig->operation = PotentialHydrogen::MID;
+    sender.join();
+    g_localConfig->done = true;
+    std::cout << "Calibration complete, cleaning up, press enter to start cleaning up" << std::endl;
+    listener.join();
+    ph.stop();
+    std::this_thread::sleep_for(std::chrono::seconds(2));
 }
 
 int main(int argc, char *argv[])

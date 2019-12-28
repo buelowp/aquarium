@@ -98,9 +98,12 @@ void PotentialHydrogen::getLastResponse(std::string &r)
 
 bool PotentialHydrogen::calibrate(int cmd)
 {
-    std::string val = std::to_string(m_lastPHValue);
+    std::stringstream ss(std::stringstream::in | std::stringstream::out);
+    ss << std::setprecision(3) << m_lastPHValue;
+    std::string val = ss.str();
     uint8_t buf[16] = {0};
     
+    std::cout << __FUNCTION__ << ss.str() << std::endl;
     for (int i = 0; i < val.size(); i++) {
         buf[i] = val[i];
     }
@@ -108,7 +111,7 @@ bool PotentialHydrogen::calibrate(int cmd)
     return true;
 }
 
-void PotentialHydrogen::printBuffer(std::vector<uint8_t> packet)
+void PotentialHydrogen::printBuffer(std::vector<uint8_t> &packet)
 {
     std::ios oldState(nullptr);
     
@@ -139,7 +142,8 @@ bool PotentialHydrogen::calibrate(int cmd, uint8_t buf[], int size)
             for (int i = 0; i < size; i++) {
                 payload.push_back(buf[i]);
             }
-            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 900);
+            printBuffer(payload);
+//            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 900);
             break;
         case MID:
             payload.push_back('m');
@@ -149,7 +153,8 @@ bool PotentialHydrogen::calibrate(int cmd, uint8_t buf[], int size)
             for (int i = 0; i < size; i++) {
                 payload.push_back(buf[i]);
             }
-            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 900);
+            printBuffer(payload);
+//            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 900);
             break;
         case HIGH:
             payload.push_back('h');
@@ -160,7 +165,8 @@ bool PotentialHydrogen::calibrate(int cmd, uint8_t buf[], int size)
             for (int i = 0; i < size; i++) {
                 payload.push_back(buf[i]);
             }
-            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 900);
+            printBuffer(payload);
+//            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 900);
             break;
         case CLEAR:
             payload.push_back('c');
@@ -168,7 +174,8 @@ bool PotentialHydrogen::calibrate(int cmd, uint8_t buf[], int size)
             payload.push_back('e');
             payload.push_back('a');
             payload.push_back('r');
-            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 300);
+            printBuffer(payload);
+//            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 300);
             break;
         case QUERY:
             payload.push_back('?');
