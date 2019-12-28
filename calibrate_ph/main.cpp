@@ -279,8 +279,9 @@ void usage(const char *name)
 {
     std::cerr << "usage: " << name << " -h <server> -p <port> -n <unique id> -u <username> -k <password/key> -d" << std::endl;
     std::cerr << "\t-c alternate configuration file (defaults to $HOME/.config/aquarium.conf" << std::endl;
+    std::cerr << "\t-l Clear calibration data and exit" << std::endl;
+    std::cerr << "\t-q Query calibration state and exit" << std::endl;
     std::cerr << "\t-h Print usage and exit" << std::endl;
-    std::cerr << "\t-d Daemonize the application to run in the background" << std::endl;
     exit(-1);
 }
 
