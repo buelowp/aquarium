@@ -98,12 +98,11 @@ void PotentialHydrogen::getLastResponse(std::string &r)
 
 bool PotentialHydrogen::calibrate(int cmd)
 {
-    std::stringstream ss(std::stringstream::in | std::stringstream::out);
-    ss << std::setprecision(3) << m_lastPHValue;
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(3) << m_lastPHValue;
     std::string val = ss.str();
     uint8_t buf[16] = {0};
     
-    std::cout << __FUNCTION__ << ss.str() << std::endl;
     for (int i = 0; i < val.size(); i++) {
         buf[i] = val[i];
     }
@@ -143,6 +142,7 @@ bool PotentialHydrogen::calibrate(int cmd, uint8_t buf[], int size)
                 payload.push_back(buf[i]);
             }
             printBuffer(payload);
+            std::cout << "Setting LOW calibration value to " << m_lastPHValue << std::endl;
 //            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 900);
             break;
         case MID:
@@ -154,6 +154,7 @@ bool PotentialHydrogen::calibrate(int cmd, uint8_t buf[], int size)
                 payload.push_back(buf[i]);
             }
             printBuffer(payload);
+            std::cout << "Setting MID calibration value to " << m_lastPHValue << std::endl;
 //            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 900);
             break;
         case HIGH:
@@ -166,6 +167,7 @@ bool PotentialHydrogen::calibrate(int cmd, uint8_t buf[], int size)
                 payload.push_back(buf[i]);
             }
             printBuffer(payload);
+            std::cout << "Setting HIGH calibration value to " << m_lastPHValue << std::endl;
 //            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 900);
             break;
         case CLEAR:
@@ -303,7 +305,7 @@ void PotentialHydrogen::handleReadResponse(std::string &response)
 {
     response.erase(response.begin());
     try {
-        m_lastPHValue = std::stoi(response);
+        m_lastPHValue = std::stod(response);
     }
     catch (std::exception &e) {
         std::cerr << "Unable to decide response: " << response << std::endl;

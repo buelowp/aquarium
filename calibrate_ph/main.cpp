@@ -66,74 +66,12 @@ struct LocalConfig {
     int green_led;
     int operation;
     bool done;
+    bool clear;
+    bool query;
 };
 
 struct LocalConfig *g_localConfig;
 std::mutex g_mutex;
-
-void waitForInput()
-{
-    while (!g_localConfig->done) {
-        g_mutex.lock();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-        g_mutex.unlock();
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
-}
-
-void writeCalibrationData()
-{
-    while (1) {
-        g_mutex.lock();
-        g_localConfig->ph->calibrate(g_localConfig->operation);
-        g_mutex.unlock();
-        switch (g_localConfig->operation) {
-            case PotentialHydrogen::MID:
-                g_localConfig->operation = PotentialHydrogen::LOW;
-                std::cout << "Place sensor in pH 4.00 solution now." << std::endl;
-                break;
-            case PotentialHydrogen::LOW:
-                g_localConfig->operation = PotentialHydrogen::HIGH;
-                std::cout << "Place sensor in pH 10.00 solution now." << std::endl;
-                break;
-            case PotentialHydrogen::HIGH:
-                g_localConfig->ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
-                return;
-        }
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-}
-
-void phCallback(int cmd, std::string response)
-{
-    int calibration = 0;
-    
-    switch (cmd) {
-        case AtlasScientificI2C::INFO:
-            break;
-        case AtlasScientificI2C::CALIBRATE:
-            if (response.find("?CAL") != std::string::npos) {
-                std::cout << "There are " << response.substr(6) << " points of calibration";
-            }
-            break;
-        case AtlasScientificI2C::READING:
-            std::cout << "PH: " << response << '\r' << std::flush;
-            break;
-        default:
-            break;
-    }
-}
-
-void eternalBlinkAndDie(int pin, int millihz)
-{
-    int state = 0;
-    GpioInterrupt::instance()->value(pin, state);
-    while (1) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(millihz));
-        state ^= 1UL << 0;
-        GpioInterrupt::instance()->setValue(pin, state); 
-    }
-}
 
 void setNormalDisplay()
 {
@@ -171,6 +109,81 @@ void initializeLeds(struct LocalConfig &lc)
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     GpioInterrupt::instance()->setValue(lc.red_led, 0);
     GpioInterrupt::instance()->setValue(lc.green_led, 1);
+}
+
+void waitForInput()
+{
+    while (!g_localConfig->done) {
+        g_mutex.lock();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        g_mutex.unlock();
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+}
+
+void writeCalibrationData()
+{
+    while (1) {
+        g_mutex.lock();
+        g_localConfig->ph->calibrate(g_localConfig->operation);
+        g_mutex.unlock();
+        switch (g_localConfig->operation) {
+            case PotentialHydrogen::MID:
+                g_localConfig->operation = PotentialHydrogen::LOW;
+                std::cout << "Place sensor in pH 4.00 solution now." << std::endl;
+                setWarningDisplay();
+                break;
+            case PotentialHydrogen::LOW:
+                g_localConfig->operation = PotentialHydrogen::HIGH;
+                std::cout << "Place sensor in pH 10.00 solution now." << std::endl;
+                setErrorDisplay();
+                break;
+            case PotentialHydrogen::HIGH:
+                g_localConfig->ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
+                return;
+        }
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+}
+
+void phCallback(int cmd, std::string response)
+{
+    int calibration = 0;
+    
+    switch (cmd) {
+        case AtlasScientificI2C::INFO:
+            break;
+        case AtlasScientificI2C::CALIBRATE:
+            if (response.find("?CAL") != std::string::npos) {
+                std::cout << "There are " << response.substr(6) << " points of calibration" << std::endl;
+                if ((response.substr(6) == "1") || (response.substr(6) == "0")) {
+                    setErrorDisplay();
+                }
+                if (response.substr(6) == "2") {
+                    setWarningDisplay();
+                }
+                if (response.substr(6) == "3") {
+                    setNormalDisplay();
+                }
+            }
+            break;
+        case AtlasScientificI2C::READING:
+            std::cout << "PH: " << response << '\r' << std::flush;
+            break;
+        default:
+            break;
+    }
+}
+
+void eternalBlinkAndDie(int pin, int millihz)
+{
+    int state = 0;
+    GpioInterrupt::instance()->value(pin, state);
+    while (1) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(millihz));
+        state ^= 1UL << 0;
+        GpioInterrupt::instance()->setValue(pin, state); 
+    }
 }
 
 bool cisCompare(const std::string & str1, const std::string &str2)
@@ -288,8 +301,10 @@ bool parse_args(int argc, char **argv, struct LocalConfig &config)
 	bool rval = true;
     std::vector<int> args;
     
+    config.clear = false;
+    config.query = false;
 	if (argv) {
-		while ((opt = getopt(argc, argv, "c:h")) != -1) {
+		while ((opt = getopt(argc, argv, "c:hlq")) != -1) {
 			switch (opt) {
             case 'h':
                 usage(argv[0]);
@@ -297,6 +312,12 @@ bool parse_args(int argc, char **argv, struct LocalConfig &config)
 			case 'c':
 				config.configFile = optarg;
 				break;
+            case 'l':
+                config.clear = true;
+                break;
+            case 'q':
+                config.query = true;
+                break;
 	        default:
                 syslog(LOG_ERR, "Unexpected command line argument given");
 	            usage(argv[0]);
@@ -325,7 +346,8 @@ void mainloop(struct LocalConfig &lc)
 {
     ITimer ph;
     auto phfunc = [lc]() { lc.ph->sendReadCommand(); };
-    
+        
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     std::cout << "Calibration for the pH meter" << std::endl;
     std::cout << "Calibrate using the pH 7.00 solution first, then the pH 4.00 solution, and finally the pH 10.00 solution." << std::endl;
     std::cout << "When you achieve a valid calibration value, press the enter key to store that value." << std::endl;
@@ -333,7 +355,7 @@ void mainloop(struct LocalConfig &lc)
     std::cout << "When you have finished, the program will print out the calibration results and exit." << std::endl;
     std::cout << "Insert the probe into the 7.00 solution, and press the enter key to begin." << std::endl;
     
-    setNormalDisplay();
+    initializeLeds(lc);
     
     g_localConfig->done = false;
     std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
@@ -346,8 +368,8 @@ void mainloop(struct LocalConfig &lc)
     sender.join();
     g_localConfig->done = true;
     std::cout << "Calibration complete, cleaning up, press enter to start cleaning up" << std::endl;
-    listener.join();
     ph.stop();
+    listener.join();
     std::this_thread::sleep_for(std::chrono::seconds(2));
 }
 
@@ -362,6 +384,14 @@ int main(int argc, char *argv[])
     syslog(LOG_NOTICE, "Application startup");
     setConfigDefaults(lc);
     
+    if (!parse_args(argc, argv, lc)) {
+        eternalBlinkAndDie(lc.red_led, 2000);
+    }
+    // if this goes badly, just die but leave the error LED blinking at 1 hz
+    if (!readConfig(&lc)) {
+        eternalBlinkAndDie(lc.red_led, 1000);
+    }
+
     if (!GpioInterrupt::instance()->addPin(lc.green_led, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
         syslog(LOG_ERR, "Unable to open GPIO for green led");
     
@@ -372,22 +402,25 @@ int main(int argc, char *argv[])
         syslog(LOG_ERR, "Unable to open GPIO for red led");
 
     initializeLeds(lc);
-
-    if (!parse_args(argc, argv, lc)) {
-        eternalBlinkAndDie(lc.red_led, 2000);
-    }
-    // if this goes badly, just die but leave the error LED blinking at 1 hz
-    if (!readConfig(&lc)) {
-        eternalBlinkAndDie(lc.red_led, 1000);
-    }
     
-    GpioInterrupt::instance()->start();    
+//    GpioInterrupt::instance()->start();    
     g_localConfig = &lc;
-
-    g_localConfig->ph->sendInfoCommand();
-    g_localConfig->ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
-    
-    mainloop(lc);
+    if (g_localConfig->clear) {
+        std::cout << "Clearing calibration data..." << std::endl;
+        g_localConfig->ph->calibrate(PotentialHydrogen::CLEAR, nullptr, 0);
+        g_localConfig->ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+    }
+    else if (g_localConfig->query) {
+        std::cout << "Checking calibration data..." << std::endl;
+        g_localConfig->ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+    }        
+    else {
+        g_localConfig->ph->sendInfoCommand();
+        g_localConfig->ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
+        mainloop(lc);
+    }
     
     return 0;
 }
