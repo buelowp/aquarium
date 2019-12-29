@@ -48,6 +48,7 @@
 
 #define DEFAULT_FR_PIN      15
 #define ONE_SECOND          1000
+#define TEN_SECONDS         (ONE_SECOND * 10)
 #define ONE_MINUTE          (ONE_SECOND * 60)
 #define FIFTEEN_MINUTES     (ONE_MINUTE * 15)
 
@@ -65,9 +66,9 @@
 #define V_MIN               0.00
 #define V_MAX               3.30
 
-#define GREEN_LED           13
-#define YELLOW_LED          12
-#define RED_LED             18
+#define GREEN_LED           17
+#define YELLOW_LED          16
+#define RED_LED             15
 
 struct LocalConfig {
     AdafruitIO *g_aio;
@@ -177,7 +178,7 @@ void phCallback(int cmd, std::string response)
             std::cout << "PH Calibration check shows " << response << std::endl;
             break;
         case AtlasScientificI2C::READING:
-            std::cout << "PH Value response " << response << std::endl;
+//            std::cout << "PH Value response " << response << std::endl;
             break;
         default:
             break;
@@ -189,7 +190,7 @@ void doCallback(int cmd, std::string response)
     switch (cmd) {
         case AtlasScientificI2C::INFO:
             syslog(LOG_NOTICE, "got DO probe info event: %s\n", response.c_str());
-            std::cout << "Got pH status event: " << response << std::endl;
+            std::cout << "Got DO status event: " << response << std::endl;
             break;
         case AtlasScientificI2C::STATUS:
             syslog(LOG_NOTICE, "got DO probe status event: %s\n", response.c_str());
@@ -677,25 +678,56 @@ void getWaterLevel(const struct LocalConfig &lc)
     }
 }
 
+void sendResultData(const struct LocalConfig &lc)
+{
+    nlohmann::json j;
+    unsigned int result;
+    float tc;
+    float tf;
+
+    result = mcp3424_get_raw(lc.adc, lc.wl_channel);
+    if (lc.adc->err) {
+        syslog(LOG_ERR, "%s:%d: Unable to get data on channel %d: %s", __FUNCTION__, __LINE__, lc.wl_channel, lc.adc->errstr);
+        std::cerr << "Unable to get data, error " << lc.adc->errstr << std::endl;
+    }
+    else {
+        j["aquarium"]["waterlevel"] = result;
+    }
+    if (lc.temp) {
+        lc.temp->getTemperature(tc, tf);
+        j["aquarium"]["temperature"]["celsius"] = tc;
+        j["aquarium"]["temperature"]["farenheit"] = tf;
+    }
+    j["aquarium"]["flowrate"]["gpm"] = lc.fr->gpm();
+    j["aquarium"]["flowrate"]["lpm"] = lc.fr->lpm();
+    j["aquarium"]["flowrate"]["hertz"] = lc.fr->hertz();
+    j["aquarium"]["ph"] = lc.ph->getPH();
+    std::cout << j.dump(4) << std::endl;
+}
+
 void mainloop(struct LocalConfig &lc)
 {
-    ITimer doUpdate;
+//    ITimer doUpdate;
     ITimer phUpdate;
-    ITimer frUpdate;
-    ITimer tempUpdate;
-    ITimer wlUpdate;
+//    ITimer frUpdate;
+//    ITimer tempUpdate;
+//    ITimer wlUpdate;
+    ITimer sendUpdate;
+    
     auto phfunc = [lc]() { lc.ph->sendReadCommand(); };
     auto dofunc = [lc]() { lc.oxygen->sendStatusCommand(); };
     auto frfunc = [lc]() { sendFlowRateData(lc); };
     auto tempfunc = [lc]() { sendTempData(lc); };
     auto wlfunc = [lc]() { getWaterLevel(lc); };
+    auto updateFunc = [lc]() { sendResultData(lc); };
     
 //    doUpdate.setInterval(dofunc, ONE_MINUTE);
-    phUpdate.setInterval(phfunc, ONE_MINUTE);
+    phUpdate.setInterval(phfunc, TEN_SECONDS);
 
 //    frUpdate.setInterval(frfunc, ONE_SECOND);
-    tempUpdate.setInterval(tempfunc, ONE_MINUTE);
-    wlUpdate.setInterval(wlfunc, ONE_MINUTE);
+//    tempUpdate.setInterval(tempfunc, TEN_SECONDS);
+//    wlUpdate.setInterval(wlfunc, TEN_SECONDS);
+    sendUpdate.setInterval(updateFunc, ONE_MINUTE);
     
     while (1) {
         if (lc.aioEnabled && lc.aioConnected)
@@ -707,10 +739,11 @@ void mainloop(struct LocalConfig &lc)
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
     
-    doUpdate.stop();
+//    doUpdate.stop();
     phUpdate.stop();
-    frUpdate.stop();
-    tempUpdate.stop();
+//    frUpdate.stop();
+//    tempUpdate.stop();
+    sendUpdate.stop();
 }
 
 int main(int argc, char *argv[])
@@ -724,6 +757,14 @@ int main(int argc, char *argv[])
     syslog(LOG_NOTICE, "Application startup");
     setConfigDefaults(lc);
     
+    if (!parse_args(argc, argv, lc)) {
+        eternalBlinkAndDie(lc.red_led, 2000);
+    }
+    // if this goes badly, just die but leave the error LED blinking at 1 hz
+    if (!readConfig(&lc)) {
+        eternalBlinkAndDie(lc.red_led, 1000);
+    }
+
     if (!GpioInterrupt::instance()->addPin(lc.green_led, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
         syslog(LOG_ERR, "Unable to open GPIO for green led");
     
@@ -737,15 +778,7 @@ int main(int argc, char *argv[])
 
     GpioInterrupt::instance()->addPin(lc.flowRatePin);
     GpioInterrupt::instance()->setPinCallback(lc.flowRatePin, flowRateCallback);
-    
-    if (!parse_args(argc, argv, lc)) {
-        eternalBlinkAndDie(lc.red_led, 2000);
-    }
-    // if this goes badly, just die but leave the error LED blinking at 1 hz
-    if (!readConfig(&lc)) {
-        eternalBlinkAndDie(lc.red_led, 1000);
-    }
-    
+        
     startOneWire(lc);
     
     if (lc.aioEnabled)

@@ -349,7 +349,7 @@ void mainloop(struct LocalConfig &lc)
     auto phfunc = [lc]() { lc.ph->sendReadCommand(); };
         
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    std::cout << "Calibration for the pH meter" << std::endl;
+    std::cout << "Calibration operation for the pH probe" << std::endl;
     std::cout << "Calibrate using the pH 7.00 solution first, then the pH 4.00 solution, and finally the pH 10.00 solution." << std::endl;
     std::cout << "When you achieve a valid calibration value, press the enter key to store that value." << std::endl;
     std::cout << "The program will then transition to the next calibration step and wait for the enter key" << std::endl;
