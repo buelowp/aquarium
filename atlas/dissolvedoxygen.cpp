@@ -165,37 +165,15 @@ void DissolvedOxygen::calibrate(int cmd, uint8_t buf[], int size)
     payload.push_back(',');
     
     switch (cmd) {
-        case LOW:
-            payload.push_back('l');
-            payload.push_back('o');
-            payload.push_back('w');
-            payload.push_back(',');
-            for (int i = 0; i < size; i++) {
-                payload.push_back(buf[i]);
-            }
-            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 900);
+        case DEFAULT:
+            payload.pop_back();
+            printBuffer(payload);
+//            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 1300);
             break;
-        case MID:
-            payload.push_back('m');
-            payload.push_back('i');
-            payload.push_back('d');
-            payload.push_back(',');
-            for (int i = 0; i < size; i++) {
-                payload.push_back(buf[i]);
-            }
-            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 900);
-            break;
-        case HIGH:
-            payload.push_back('h');
-            payload.push_back('i');
-            payload.push_back('g');
-            payload.push_back('h');
-            payload.push_back(',');
-            for (int i = 0; i < size; i++) {
-                payload.push_back(buf[i]);
-            }
-            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 900);
-            break;
+        case ZERO:
+            payload.push_back('0');
+            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 1300);
+            break;            
         case CLEAR:
             payload.push_back('c');
             payload.push_back('l');
@@ -224,3 +202,15 @@ void DissolvedOxygen::handleReadResponse(std::string &response)
     }
 }
 
+void DissolvedOxygen::printBuffer(std::vector<uint8_t> &packet)
+{
+    std::ios oldState(nullptr);
+    
+    oldState.copyfmt(std::cout);
+    std::cout << "Packet: ";
+    for (int i = 0; i < packet.size(); i++) {
+        std::cout << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(packet[i]) << " ";
+    }
+    std::cout << std::endl;
+    std::cout.copyfmt(oldState);
+}

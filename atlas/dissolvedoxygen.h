@@ -29,6 +29,8 @@
 #include <iostream>
 #include <functional>
 #include <string>
+#include <iomanip>
+
 #include <syslog.h>
 
 #include "atlasscientifici2c.h"
@@ -37,9 +39,9 @@ class DissolvedOxygen : public AtlasScientificI2C
 {
 public:
     static const int CLEAR = 100;
-    static const int LOW = 101;
-    static const int MID = 102;
-    static const int HIGH = 103;
+    static const int DEFAULT = 101;
+    static const int LOW = 102;
+    static const int ZERO = 102;
     static const int QUERY = 104;
  
     DissolvedOxygen(uint8_t, uint8_t);
@@ -47,7 +49,7 @@ public:
 
     void getLastResponse(std::string&);
     void setCallback(std::function<void(int, std::string)> cbk) { m_callback = cbk; }
-    void calibrate(int, uint8_t*, int);    
+    void calibrate(int, uint8_t*, int);
     void response(int cmd, uint8_t*, int) override;
     double getDO() { return m_lastDOValue; }
 
@@ -55,6 +57,7 @@ private:
     void handleCalibration(std::string);
     void handleStatusResponse(std::string);
     void handleReadResponse(std::string&);
+    void printBuffer(std::vector<uint8_t>&);
     
     std::function<void(int, std::string)> m_callback;
     int m_calibration;
