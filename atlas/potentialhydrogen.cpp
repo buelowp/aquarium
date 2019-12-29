@@ -201,6 +201,19 @@ void PotentialHydrogen::slope()
     sendCommand(AtlasScientificI2C::SLOPE, payload.data(), payload.size(), 300);
 }
 
+void PotentialHydrogen::setTempCompensation(double temp)
+{
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(3) << temp;
+    std::string val = ss.str();
+    uint8_t buf[16] = {0};
+    
+    for (int i = 0; i < val.size(); i++) {
+        buf[i] = val[i];
+    }
+    setTempCompensation(buf, val.size());
+}
+
 void PotentialHydrogen::setTempCompensation(uint8_t *buf, int size)
 {
     std::vector<uint8_t> payload;
@@ -212,6 +225,19 @@ void PotentialHydrogen::setTempCompensation(uint8_t *buf, int size)
         payload.push_back(buf[i]);
     }
     sendCommand(AtlasScientificI2C::SETTEMPCOMP, payload.data(), payload.size(), 300);
+}
+
+void PotentialHydrogen::setTempCompensationAndRead(double temp)
+{
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(3) << temp;
+    std::string val = ss.str();
+    uint8_t buf[16] = {0};
+    
+    for (int i = 0; i < val.size(); i++) {
+        buf[i] = val[i];
+    }
+    setTempCompensationAndRead(buf, val.size());
 }
 
 void PotentialHydrogen::setTempCompensationAndRead(uint8_t *buf, int size)

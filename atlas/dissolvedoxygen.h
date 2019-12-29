@@ -52,6 +52,11 @@ public:
     void calibrate(int, uint8_t*, int);
     void response(int cmd, uint8_t*, int) override;
     double getDO() { return m_lastDOValue; }
+    void setTempCompensation(uint8_t*, int);
+    void setTempCompensation(double);
+    void setTempCompensationAndRead(uint8_t*, int);
+    void setTempCompensationAndRead(double);
+    void getTempCompensation();
 
 private:
     void handleCalibration(std::string);

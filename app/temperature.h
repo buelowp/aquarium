@@ -42,7 +42,9 @@ public:
     Temperature(std::string);
     ~Temperature();
     
-    void getTemperature(float&, float&);
+    void getTemperature(double&, double&);
+    double celsius();
+    double farenheit();
     bool enabled() { return m_enabled; }
     
 private:

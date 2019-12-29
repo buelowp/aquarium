@@ -65,7 +65,9 @@ public:
     bool calibrate(int);
     void slope();
     void setTempCompensation(uint8_t*, int);
+    void setTempCompensation(double);
     void setTempCompensationAndRead(uint8_t*, int);
+    void setTempCompensationAndRead(double);
     void getTempCompensation();
     std::string getLastReason() { return m_lastResetReason; }
     double getVoltage() { return m_lastVoltage; }

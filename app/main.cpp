@@ -544,8 +544,8 @@ void sendFlowRateData(const struct LocalConfig &lc)
 void sendTempData(const struct LocalConfig &lc)
 {
     static int count = 0;
-    float tc;
-    float tf;
+    double tc;
+    double tf;
     std::string aio;
     nlohmann::json j;
     
@@ -721,8 +721,8 @@ void sendResultData(const struct LocalConfig &lc)
 {
     nlohmann::json j;
     unsigned int result;
-    float tc;
-    float tf;
+    double tc;
+    double tf;
 
     result = mcp3424_get_raw(lc.adc, lc.wl_channel);
     if (lc.adc->err) {
@@ -745,23 +745,34 @@ void sendResultData(const struct LocalConfig &lc)
     std::cout << j.dump(4) << std::endl;
 }
 
+void setTempCompensation(const struct LocalConfig &lc)
+{
+    double tc = lc.temp->celsius();
+
+    if (tc != 0) {
+        lc.ph->setTempCompensationAndRead(tc);
+        lc.oxygen->setTempCompensationAndRead(tc);
+    }
+}
+
 void mainloop(struct LocalConfig &lc)
 {
     ITimer doUpdate;
     ITimer phUpdate;
     ITimer sendUpdate;
+    ITimer tempCompensation;
     
     auto phfunc = [lc]() { lc.ph->sendReadCommand(900); };
     auto dofunc = [lc]() { lc.oxygen->sendReadCommand(600); };
-    auto frfunc = [lc]() { sendFlowRateData(lc); };
-    auto tempfunc = [lc]() { sendTempData(lc); };
-    auto wlfunc = [lc]() { getWaterLevel(lc); };
     auto updateFunc = [lc]() { sendResultData(lc); };
+    auto compFunc = [lc]() { setTempCompensation(lc); };
     
     doUpdate.setInterval(dofunc, TEN_SECONDS);
     phUpdate.setInterval(phfunc, TEN_SECONDS);
-
     sendUpdate.setInterval(updateFunc, ONE_MINUTE);
+    tempCompensation.setTimeout(compFunc, FIFTEEN_MINUTES);
+    
+    setTempCompensation(lc);
     
     while (1) {
         if (lc.aioEnabled && lc.aioConnected)
@@ -826,12 +837,13 @@ int main(int argc, char *argv[])
     g_localConfig = &lc;
 
     lc.oxygen->sendInfoCommand();
-    lc.ph->sendInfoCommand();
-    std::this_thread::sleep_for(std::chrono::milliseconds(400));
     lc.oxygen->calibrate(DissolvedOxygen::QUERY, nullptr, 0);
-    lc.ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
-    std::this_thread::sleep_for(std::chrono::milliseconds(400));
+    lc.oxygen->getTempCompensation();
     lc.oxygen->sendStatusCommand();
+
+    lc.ph->sendInfoCommand();
+    lc.ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
+    lc.ph->getTempCompensation();
     lc.ph->sendStatusCommand();
     
     mainloop(lc);

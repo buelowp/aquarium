@@ -214,3 +214,68 @@ void DissolvedOxygen::printBuffer(std::vector<uint8_t> &packet)
     std::cout << std::endl;
     std::cout.copyfmt(oldState);
 }
+
+void DissolvedOxygen::setTempCompensation(double temp)
+{
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(3) << temp;
+    std::string val = ss.str();
+    uint8_t buf[16] = {0};
+    
+    for (int i = 0; i < val.size(); i++) {
+        buf[i] = val[i];
+    }
+    setTempCompensation(buf, val.size());
+}
+
+void DissolvedOxygen::setTempCompensation(uint8_t *buf, int size)
+{
+    std::vector<uint8_t> payload;
+    
+    payload.push_back('T');
+    payload.push_back(',');
+    
+    for (int i = 0; i < size; i++) {
+        payload.push_back(buf[i]);
+    }
+    sendCommand(AtlasScientificI2C::SETTEMPCOMP, payload.data(), payload.size(), 300);
+}
+
+void DissolvedOxygen::setTempCompensationAndRead(double temp)
+{
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(3) << temp;
+    std::string val = ss.str();
+    uint8_t buf[16] = {0};
+    
+    for (int i = 0; i < val.size(); i++) {
+        buf[i] = val[i];
+    }
+    setTempCompensationAndRead(buf, val.size());
+}
+
+void DissolvedOxygen::setTempCompensationAndRead(uint8_t *buf, int size)
+{
+    std::vector<uint8_t> payload;
+    
+    payload.push_back('R');
+    payload.push_back('T');
+    payload.push_back(',');
+    
+    for (int i = 0; i < size; i++) {
+        payload.push_back(buf[i]);
+    }
+    sendCommand(AtlasScientificI2C::SETTEMPCOMPREAD, payload.data(), payload.size(), 900);
+}
+
+void DissolvedOxygen::getTempCompensation()
+{
+    std::vector<uint8_t> payload;
+    
+    payload.push_back('T');
+    payload.push_back(',');
+    payload.push_back('?');
+    
+    sendCommand(AtlasScientificI2C::GETTEMPCOMP, payload.data(), payload.size(), 300);
+}
+

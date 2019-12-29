@@ -63,11 +63,32 @@ Temperature::~Temperature()
 {
 }
 
-void Temperature::getTemperature(float &tc, float &tf)
+double Temperature::farenheit()
+{
+    double tc;
+    double tf;
+    
+    getTemperature(tc, tf);
+    return tf;
+}
+
+double Temperature::celsius()
+{
+    double tc;
+    double tf;
+    
+    getTemperature(tc, tf);
+    return tc;
+}
+
+void Temperature::getTemperature(double &tc, double &tf)
 {
     std::ifstream fs(m_path);
     std::stringstream contents;
     std::string data;
+    
+    tc = 0;
+    tf = 0;
     
     if (fs.is_open() && m_enabled) {
         contents << fs.rdbuf();
@@ -76,7 +97,7 @@ void Temperature::getTemperature(float &tc, float &tf)
             data = contents.str().substr(pos + 2, 5);
         }
         try {
-            float t = std::stof(data);
+            double t = std::stof(data);
             tc = t / 1000;
             tf = (tc * 1.8) + 32;
         }
