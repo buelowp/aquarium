@@ -346,7 +346,7 @@ bool parse_args(int argc, char **argv, struct LocalConfig &config)
 void mainloop(struct LocalConfig &lc)
 {
     ITimer ph;
-    auto phfunc = [lc]() { lc.ph->sendReadCommand(); };
+    auto phfunc = [lc]() { lc.ph->sendReadCommand(900); };
         
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     std::cout << "Calibration operation for the pH probe" << std::endl;
@@ -360,7 +360,7 @@ void mainloop(struct LocalConfig &lc)
     
     g_localConfig->done = false;
     std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
-    g_localConfig->ph->sendReadCommand();
+    g_localConfig->ph->sendReadCommand(900);
     std::thread listener(waitForInput);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     std::thread sender(writeCalibrationData);

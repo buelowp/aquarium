@@ -70,6 +70,9 @@ void DissolvedOxygen::response(int cmd, uint8_t *buffer, int size)
     case AtlasScientificI2C::STATUS:
         handleStatusResponse(r);
         break;
+    case AtlasScientificI2C::READING:
+        handleReadResponse(r);
+        break;
     default:
         break;
     }
@@ -207,6 +210,17 @@ void DissolvedOxygen::calibrate(int cmd, uint8_t buf[], int size)
             break;
         default:
             break;
+    }
+}
+
+void DissolvedOxygen::handleReadResponse(std::string &response)
+{
+    response.erase(response.begin());
+    try {
+        m_lastDOValue = std::stod(response);
+    }
+    catch (std::exception &e) {
+        std::cerr << "Unable to decode response: " << response << std::endl;
     }
 }
 

@@ -163,19 +163,53 @@ bool cisCompare(const std::string & str1, const std::string &str2)
             ));
 }
 
+void decodeStatusResponse(std::string &response)
+{
+    int pos = response.find_last_of(",");
+    double voltage;
+    
+    if (pos != std::string::npos) {
+        voltage = std::stod(response.substr(pos + 1));
+        if (voltage > 3)
+            std::cout << "probe is operating normally, reporting voltage " << voltage;
+        else 
+            std::cout << "probe is reporting an unusual voltage (" << voltage << "), it may not be operating correctly.";
+    }
+    else {
+        std::cout << "probe status cannot be decoded";
+    }
+}
+
+void decodeInfoResponse(std::string &response)
+{
+    int pos = response.find_last_of(",");
+    
+    if (pos != std::string::npos) {
+        std::cout << "probe is running firmware version " << response.substr(pos + 1);
+    }
+    else {
+        std::cout << "probe info response cannot be decoded";
+    }
+}
+
 void phCallback(int cmd, std::string response)
 {
     switch (cmd) {
         case AtlasScientificI2C::INFO:
             syslog(LOG_NOTICE, "got pH probe info event: %s\n", response.c_str());
-            std::cout << "Got an INFO response: " << response << std::endl;
+            std::cout << "pH "; 
+            decodeInfoResponse(response);
+            std::cout << std::endl;
             break;
         case AtlasScientificI2C::STATUS:
             syslog(LOG_NOTICE, "got pH probe status event: %s\n", response.c_str());
-            std::cout << "Got pH status event: " << response << std::endl;
+            std::cout << "pH ";
+            decodeStatusResponse(response);
+            std::cout << std::endl;
             break;
         case AtlasScientificI2C::CALIBRATE:
-            std::cout << "PH Calibration check shows " << response << std::endl;
+            if (response.find(",0") != std::string::npos)
+                std::cout << "pH probe reports no calibration data..." << std::endl;
             break;
         case AtlasScientificI2C::READING:
 //            std::cout << "PH Value response " << response << std::endl;
@@ -190,14 +224,19 @@ void doCallback(int cmd, std::string response)
     switch (cmd) {
         case AtlasScientificI2C::INFO:
             syslog(LOG_NOTICE, "got DO probe info event: %s\n", response.c_str());
-            std::cout << "Got DO status event: " << response << std::endl;
+            std::cout << "DO ";
+            decodeInfoResponse(response);
+            std::cout << std::endl;
             break;
         case AtlasScientificI2C::STATUS:
             syslog(LOG_NOTICE, "got DO probe status event: %s\n", response.c_str());
-            std::cout << "Got DO status event: " << response << std::endl;
+            std::cout << "DO ";
+            decodeStatusResponse(response);
+            std::cout << std::endl;
             break;
         case AtlasScientificI2C::CALIBRATE:
-            std::cout << "DO Calibration check shows " << response << std::endl;
+            if (response.find(",0") != std::string::npos)
+                std::cout << "DO probe reports no calibration data..." << std::endl;
             break;
         default:
             break;
@@ -702,31 +741,26 @@ void sendResultData(const struct LocalConfig &lc)
     j["aquarium"]["flowrate"]["lpm"] = lc.fr->lpm();
     j["aquarium"]["flowrate"]["hertz"] = lc.fr->hertz();
     j["aquarium"]["ph"] = lc.ph->getPH();
+    j["aquarium"]["oxygen"] = lc.oxygen->getDO();
     std::cout << j.dump(4) << std::endl;
 }
 
 void mainloop(struct LocalConfig &lc)
 {
-//    ITimer doUpdate;
+    ITimer doUpdate;
     ITimer phUpdate;
-//    ITimer frUpdate;
-//    ITimer tempUpdate;
-//    ITimer wlUpdate;
     ITimer sendUpdate;
     
-    auto phfunc = [lc]() { lc.ph->sendReadCommand(); };
-    auto dofunc = [lc]() { lc.oxygen->sendStatusCommand(); };
+    auto phfunc = [lc]() { lc.ph->sendReadCommand(900); };
+    auto dofunc = [lc]() { lc.oxygen->sendReadCommand(600); };
     auto frfunc = [lc]() { sendFlowRateData(lc); };
     auto tempfunc = [lc]() { sendTempData(lc); };
     auto wlfunc = [lc]() { getWaterLevel(lc); };
     auto updateFunc = [lc]() { sendResultData(lc); };
     
-//    doUpdate.setInterval(dofunc, ONE_MINUTE);
+    doUpdate.setInterval(dofunc, TEN_SECONDS);
     phUpdate.setInterval(phfunc, TEN_SECONDS);
 
-//    frUpdate.setInterval(frfunc, ONE_SECOND);
-//    tempUpdate.setInterval(tempfunc, TEN_SECONDS);
-//    wlUpdate.setInterval(wlfunc, TEN_SECONDS);
     sendUpdate.setInterval(updateFunc, ONE_MINUTE);
     
     while (1) {
@@ -739,10 +773,8 @@ void mainloop(struct LocalConfig &lc)
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
     
-//    doUpdate.stop();
+    doUpdate.stop();
     phUpdate.stop();
-//    frUpdate.stop();
-//    tempUpdate.stop();
     sendUpdate.stop();
 }
 

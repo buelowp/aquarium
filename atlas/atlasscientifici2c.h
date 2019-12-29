@@ -64,7 +64,7 @@ public:
     
     bool sendCommand(int, uint8_t*, int, int);
     bool sendInfoCommand();
-    bool sendReadCommand();
+    bool sendReadCommand(int);
     bool sendStatusCommand();
     
     virtual void response(int, uint8_t*, int) = 0;

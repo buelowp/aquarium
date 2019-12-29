@@ -49,15 +49,18 @@ public:
     void setCallback(std::function<void(int, std::string)> cbk) { m_callback = cbk; }
     void calibrate(int, uint8_t*, int);    
     void response(int cmd, uint8_t*, int) override;
+    double getDO() { return m_lastDOValue; }
 
 private:
     void handleCalibration(std::string);
     void handleStatusResponse(std::string);
+    void handleReadResponse(std::string&);
     
     std::function<void(int, std::string)> m_callback;
     int m_calibration;
     std::string m_lastResetReason;
     double m_lastVoltage;
+    double m_lastDOValue;
 };
 
 #endif // DISSOLVEDOXYGEN_H

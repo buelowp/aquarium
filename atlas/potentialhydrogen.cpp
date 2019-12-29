@@ -56,8 +56,6 @@ void PotentialHydrogen::response(int cmd, uint8_t *buffer, int size)
                 syslog(LOG_ERR, "%s:%d: Reply from sensor confused me: %s", __FUNCTION__, __LINE__, r.c_str());
             }
             else {
-                syslog(LOG_INFO, "%s:%d: pH Sensor is enabled with sensor version %s", __FUNCTION__, __LINE__, m_version.c_str());
-                std::cout << "pH Sensor is enabled with sensor version " << m_version << std::endl;
                 m_enabled = true;
             }
         }
@@ -308,6 +306,6 @@ void PotentialHydrogen::handleReadResponse(std::string &response)
         m_lastPHValue = std::stod(response);
     }
     catch (std::exception &e) {
-        std::cerr << "Unable to decide response: " << response << std::endl;
+        std::cerr << "Unable to decode response: " << response << std::endl;
     }
 }
