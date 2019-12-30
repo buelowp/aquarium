@@ -103,6 +103,7 @@ struct LocalConfig {
     int red_led;
     int yellow_led;
     int green_led;
+    mcp3424_resolution adc_resolution;
 };
 
 struct LocalConfig *g_localConfig;
@@ -192,6 +193,17 @@ void decodeInfoResponse(std::string &response)
     }
 }
 
+void decodeTempCompensation(std::string &response)
+{
+    int pos = response.find_last_of(",");
+    if (pos != std::string::npos) {
+        std::cout << "probe has a temp compensation value of " << response.substr(pos + 1) << "C";
+    }
+    else {
+        std::cout << "probe temp compensation response cannot be decoded";
+    }
+}
+
 void phCallback(int cmd, std::string response)
 {
     switch (cmd) {
@@ -214,6 +226,10 @@ void phCallback(int cmd, std::string response)
         case AtlasScientificI2C::READING:
 //            std::cout << "PH Value response " << response << std::endl;
             break;
+        case AtlasScientificI2C::GETTEMPCOMP:
+            std::cout << "pH ";
+            decodeTempCompensation(response);
+            std::cout << std::endl;
         default:
             break;
     }
@@ -238,6 +254,10 @@ void doCallback(int cmd, std::string response)
             if (response.find(",0") != std::string::npos)
                 std::cout << "DO probe reports no calibration data..." << std::endl;
             break;
+        case AtlasScientificI2C::GETTEMPCOMP:
+            std::cout << "pH ";
+            decodeTempCompensation(response);
+            std::cout << std::endl;
         default:
             break;
     }
@@ -307,6 +327,7 @@ bool readConfig(struct LocalConfig *lc)
     int red;
     int yellow;
     int green;
+    int resolution;
     
     config_init(&config);
     if (config_read_file(&config, lc->configFile.c_str()) == CONFIG_FALSE) {
@@ -463,8 +484,31 @@ bool readConfig(struct LocalConfig *lc)
             }
         }
 
-        syslog(LOG_INFO, "ADC device on i2c address %x, monitoring channel %d", lc->adc_address, static_cast<int>(lc->wl_channel));
-        fprintf(stderr, "ADC device on i2c address %x, monitoring channel %d\n", lc->adc_address, static_cast<int>(lc->wl_channel));
+        if (config_lookup_int(&config, "adc_resolution", &resolution) == CONFIG_TRUE) {
+            switch (channel) {
+                case 12:
+                    lc->adc_resolution = MCP3424_RESOLUTION_12;
+                    break;
+                case 14:
+                    lc->adc_resolution = MCP3424_RESOLUTION_14;
+                    break;
+                case 16:
+                    lc->adc_resolution = MCP3424_RESOLUTION_16;
+                    break;
+                case 18:
+                    lc->adc_resolution = MCP3424_RESOLUTION_18;
+                    break;
+                default:
+                    lc->adc_resolution = MCP3424_RESOLUTION_12;
+                    break;
+            }
+        }
+        else {
+            lc->adc_resolution = MCP3424_RESOLUTION_12;
+        }
+
+        syslog(LOG_INFO, "ADC device on i2c address %x, monitoring channel %d, %d bits resolution", lc->adc_address, static_cast<int>(lc->wl_channel), static_cast<int>(lc->adc_resolution));
+        fprintf(stderr, "ADC device on i2c address %x, monitoring channel %d, %d bits resolution\n", lc->adc_address, channel, static_cast<int>(lc->adc_resolution));
         
         if (config_lookup_int(&config, "o2sensor_address", &o2sensor) == CONFIG_TRUE)
             lc->o2sensor_address = o2sensor;
@@ -606,7 +650,7 @@ bool openMCP3424(struct LocalConfig &lc)
 		return false;
 	}
 
-	mcp3424_init(lc.adc, fd, lc.adc_address, MCP3424_RESOLUTION_18);
+	mcp3424_init(lc.adc, fd, lc.adc_address, lc.adc_resolution);
     mcp3424_set_conversion_mode(lc.adc, MCP3424_CONVERSION_MODE_CONTINUOUS);
     fprintf(stdout, "MCP 3424 setup complete for address 0x%x, fd %d\n", lc.adc_address, lc.adc->fd);
     syslog(LOG_INFO, "MCP 3424 setup complete for address 0x%x, fd %d", lc.adc_address, lc.adc->fd);
@@ -687,8 +731,9 @@ void startOneWire(struct LocalConfig &lc)
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     lc.temp = new Temperature();
     
-    if (!lc.temp->enabled())
+    if (!lc.temp->enabled()) {
         setWarningDisplay();
+    }
 }
 
 void getWaterLevel(const struct LocalConfig &lc)
@@ -743,6 +788,12 @@ void sendResultData(const struct LocalConfig &lc)
     j["aquarium"]["ph"] = lc.ph->getPH();
     j["aquarium"]["oxygen"] = lc.oxygen->getDO();
     std::cout << j.dump(4) << std::endl;
+    if (lc.mqttEnabled && lc.mqttConnected) {
+        lc.g_mqtt->publish(NULL, "aquarium/data", j.dump().size(), j.dump().c_str());
+    }
+    if (lc.aioEnabled && lc.aioConnected) {
+        lc.g_aio->publish(NULL, AIO_LEVEL_FEED, j.dump().size(), j.dump().c_str());
+    }
 }
 
 void setTempCompensation(const struct LocalConfig &lc)
