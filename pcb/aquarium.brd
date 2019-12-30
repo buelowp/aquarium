@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="9.5.1">
+<eagle version="9.5.2">
 <drawing>
 <settings>
 <setting alwaysvectorfont="no"/>
@@ -172,18 +172,14 @@
 <text x="28.575" y="8.128" size="1.778" layer="121">+</text>
 <text x="118.491" y="42.291" size="1.778" layer="121">+</text>
 <text x="118.745" y="33.401" size="1.778" layer="121">+</text>
-<text x="118.745" y="24.638" size="1.778" layer="121">+</text>
-<text x="118.745" y="15.748" size="1.778" layer="121">+</text>
+<text x="118.745" y="22.098" size="1.778" layer="121">+</text>
+<text x="118.745" y="13.208" size="1.778" layer="121">+</text>
 <text x="119.761" y="40.259" size="1.778" layer="121" rot="R90">-</text>
 <text x="118.491" y="32.131" size="1.778" layer="121" rot="R270">-</text>
 <text x="118.237" y="53.721" size="1.778" layer="121" rot="R270">-</text>
 <text x="12.573" y="40.005" size="0.8128" layer="121" rot="R270">2n3904</text>
 <text x="15.494" y="28.956" size="1.778" layer="121">100uf</text>
-<text x="14.605" y="56.261" size="0.8128" layer="121" rot="R180">150ohm</text>
-<text x="9.271" y="44.958" size="0.8128" layer="121" rot="R90">150ohm</text>
-<text x="4.318" y="36.449" size="0.8128" layer="121">150ohm</text>
 <text x="52.07" y="8.89" size="1.778" layer="121" rot="R90">MCP3424</text>
-<text x="4.191" y="27.559" size="0.8128" layer="121">100ohm</text>
 <text x="2.54" y="44.831" size="1.016" layer="121" rot="R90">Amber</text>
 <text x="2.413" y="51.435" size="1.016" layer="121" rot="R90">Green</text>
 <text x="2.54" y="39.37" size="1.016" layer="121" rot="R90">Red</text>
@@ -200,17 +196,12 @@
 <text x="1.27" y="39.37" size="0.8128" layer="121" rot="R90">Error</text>
 <text x="1.27" y="45.72" size="0.8128" layer="121" rot="R90">Issue</text>
 <text x="1.27" y="51.562" size="0.8128" layer="121" rot="R90">Normal</text>
-<text x="23.241" y="37.592" size="0.8128" layer="121">2.2k</text>
-<text x="23.241" y="43.942" size="0.8128" layer="121">2.2k</text>
-<text x="23.241" y="50.419" size="0.8128" layer="121">2.2k</text>
 <text x="30.48" y="12.7" size="1.016" layer="121" rot="R90">GPIO_0</text>
 <text x="21.59" y="35.56" size="1.016" layer="121">GPIO_15</text>
 <text x="21.59" y="41.91" size="1.016" layer="121">GPIO_16</text>
 <text x="21.59" y="52.07" size="1.016" layer="121">GPIO_17</text>
 <text x="113.03" y="33.02" size="1.016" layer="121" rot="R90">GPIO_19</text>
 <text x="111.76" y="50.8" size="1.016" layer="121" rot="R270">GPIO_13</text>
-<text x="34.29" y="11.43" size="1.016" layer="121">Water
-Level</text>
 <text x="52.07" y="50.8" size="1.016" layer="122" rot="MR0">Aquarium Monitor
 Sensor Board
 (C) Peter Buelow, 2019
@@ -219,11 +210,20 @@ Version 1.2</text>
 <text x="110.49" y="52.07" size="1.016" layer="121" rot="R90">GPIO_11</text>
 <text x="119.888" y="10.16" size="1.016" layer="121" rot="R90">Sig</text>
 <text x="119.888" y="19.05" size="1.016" layer="121" rot="R90">Sig</text>
-<text x="119.38" y="22.225" size="1.016" layer="121" rot="R90">_</text>
-<text x="119.38" y="13.462" size="1.016" layer="121" rot="R90">_</text>
-<text x="31.75" y="7.62" size="1.016" layer="121">Sig</text>
-<text x="34.29" y="7.62" size="1.016" layer="121">Gnd</text>
-<text x="37.465" y="7.62" size="1.016" layer="121">+3v</text>
+<text x="118.11" y="26.035" size="1.016" layer="121" rot="R270">_</text>
+<text x="118.11" y="17.018" size="1.016" layer="121" rot="R270">_</text>
+<text x="31.75" y="8.89" size="1.27" layer="121">  E-Tape
+  Module
+Wh Rd Bk</text>
+<text x="33.02" y="15.24" size="1.27" layer="121">Milone</text>
+<text x="23.368" y="50.292" size="1.016" layer="121">1k</text>
+<text x="23.495" y="43.942" size="1.016" layer="121">1k</text>
+<text x="23.495" y="37.592" size="1.016" layer="121">1k</text>
+<text x="5.334" y="36.322" size="1.016" layer="121">3.3k</text>
+<text x="9.398" y="45.72" size="1.016" layer="121" rot="R90">3.3k</text>
+<text x="7.874" y="28.448" size="1.016" layer="121" rot="R180">3.3k</text>
+<text x="13.589" y="56.388" size="1.016" layer="121" rot="R180">1k</text>
+<text x="33.909" y="7.366" size="1.016" layer="121">Ch 2</text>
 </plain>
 <libraries>
 <library name="SparkFun-Capacitors" urn="urn:adsk.eagle:library:510">
@@ -1231,10 +1231,10 @@ Note, that not all DRC settings must be set by the manufacturer. Several can be 
 <contactref element="J22" pad="4"/>
 <contactref element="J22" pad="6"/>
 <contactref element="J21" pad="4"/>
-<contactref element="J12" pad="2"/>
-<contactref element="J24" pad="2"/>
-<contactref element="J25" pad="2"/>
 <contactref element="J23" pad="2"/>
+<contactref element="J12" pad="3"/>
+<contactref element="J24" pad="3"/>
+<contactref element="J25" pad="3"/>
 </signal>
 <signal name="+5V">
 <contactref element="J14" pad="PWR"/>
@@ -1374,15 +1374,15 @@ Note, that not all DRC settings must be set by the manufacturer. Several can be 
 <contactref element="R9" pad="P$1"/>
 <contactref element="R8" pad="P$1"/>
 <contactref element="J22" pad="2"/>
-<contactref element="J24" pad="3"/>
-<contactref element="J25" pad="3"/>
 <contactref element="J13" pad="1"/>
 <contactref element="J26" pad="3"/>
 <contactref element="J27" pad="3"/>
 <contactref element="J11" pad="2"/>
 <contactref element="C3" pad="1"/>
 <contactref element="R12" pad="P$1"/>
-<contactref element="J12" pad="3"/>
+<contactref element="J12" pad="2"/>
+<contactref element="J24" pad="2"/>
+<contactref element="J25" pad="2"/>
 </signal>
 <signal name="PH_PROBE">
 <contactref element="J7" pad="2"/>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="9.5.1">
+<eagle version="9.5.2">
 <drawing>
 <settings>
 <setting alwaysvectorfont="no"/>
@@ -9168,8 +9168,8 @@ Source: http://www.osram.convergy.de/</description>
 <instance part="VDD5" gate="G$1" x="182.88" y="93.98" smashed="yes" rot="R270">
 <attribute name="VALUE" x="180.34" y="96.52" size="1.778" layer="96"/>
 </instance>
-<instance part="VDD7" gate="G$1" x="139.7" y="109.22" smashed="yes" rot="R180">
-<attribute name="VALUE" x="139.7" y="106.68" size="1.778" layer="96" rot="R270"/>
+<instance part="VDD7" gate="G$1" x="137.16" y="109.22" smashed="yes" rot="R180">
+<attribute name="VALUE" x="137.16" y="106.68" size="1.778" layer="96" rot="R270"/>
 </instance>
 <instance part="H1" gate="G$1" x="48.26" y="40.64" smashed="yes">
 <attribute name="NAME" x="50.292" y="41.2242" size="1.778" layer="95"/>
@@ -9260,11 +9260,11 @@ Source: http://www.osram.convergy.de/</description>
 <attribute name="VALUE" x="129.794" y="48.26" size="1.778" layer="96" font="vector" rot="R270"/>
 <attribute name="NAME" x="142.748" y="48.26" size="1.778" layer="95" font="vector" rot="R270"/>
 </instance>
-<instance part="VDD12" gate="G$1" x="121.92" y="25.4" smashed="yes" rot="R180">
-<attribute name="VALUE" x="124.46" y="27.94" size="1.778" layer="96" rot="R270"/>
+<instance part="VDD12" gate="G$1" x="119.38" y="25.4" smashed="yes" rot="R180">
+<attribute name="VALUE" x="118.618" y="21.844" size="1.778" layer="96" rot="R270"/>
 </instance>
-<instance part="VDD13" gate="G$1" x="139.7" y="25.4" smashed="yes" rot="R180">
-<attribute name="VALUE" x="142.24" y="27.94" size="1.778" layer="96" rot="R270"/>
+<instance part="VDD13" gate="G$1" x="137.16" y="25.4" smashed="yes" rot="R180">
+<attribute name="VALUE" x="136.652" y="21.59" size="1.778" layer="96" rot="R270"/>
 </instance>
 <instance part="J26" gate="J$1" x="55.88" y="132.08" smashed="yes" rot="R270">
 <attribute name="VALUE" x="48.514" y="134.62" size="1.778" layer="96" font="vector" rot="R270"/>
@@ -9346,14 +9346,14 @@ Source: http://www.osram.convergy.de/</description>
 <instance part="GND22" gate="1" x="241.3" y="30.48" smashed="yes" rot="R90">
 <attribute name="VALUE" x="243.84" y="27.94" size="1.778" layer="96" rot="R90"/>
 </instance>
-<instance part="GND23" gate="1" x="137.16" y="109.22" smashed="yes">
-<attribute name="VALUE" x="138.176" y="101.6" size="1.778" layer="96" rot="R90"/>
+<instance part="GND23" gate="1" x="139.7" y="109.22" smashed="yes">
+<attribute name="VALUE" x="140.716" y="101.6" size="1.778" layer="96" rot="R90"/>
 </instance>
-<instance part="GND24" gate="1" x="119.38" y="22.86" smashed="yes">
-<attribute name="VALUE" x="120.142" y="16.51" size="1.778" layer="96" rot="R90"/>
+<instance part="GND24" gate="1" x="121.92" y="22.86" smashed="yes">
+<attribute name="VALUE" x="122.682" y="16.51" size="1.778" layer="96" rot="R90"/>
 </instance>
-<instance part="GND25" gate="1" x="137.16" y="22.86" smashed="yes">
-<attribute name="VALUE" x="138.176" y="16.51" size="1.778" layer="96" rot="R90"/>
+<instance part="GND25" gate="1" x="139.7" y="22.86" smashed="yes">
+<attribute name="VALUE" x="140.716" y="16.51" size="1.778" layer="96" rot="R90"/>
 </instance>
 <instance part="J23" gate="G$1" x="99.06" y="132.08" smashed="yes" rot="R270">
 <attribute name="VALUE" x="94.234" y="134.62" size="1.778" layer="96" font="vector" rot="R270"/>
@@ -9487,24 +9487,24 @@ Source: http://www.osram.convergy.de/</description>
 <pinref part="GND22" gate="1" pin="GND"/>
 </segment>
 <segment>
-<pinref part="J12" gate="J$1" pin="2"/>
-<wire x1="137.16" y1="124.46" x2="137.16" y2="111.76" width="0.1524" layer="91"/>
-<pinref part="GND23" gate="1" pin="GND"/>
-</segment>
-<segment>
-<pinref part="J24" gate="J$1" pin="2"/>
-<wire x1="119.38" y1="38.1" x2="119.38" y2="25.4" width="0.1524" layer="91"/>
-<pinref part="GND24" gate="1" pin="GND"/>
-</segment>
-<segment>
-<pinref part="J25" gate="J$1" pin="2"/>
-<wire x1="137.16" y1="38.1" x2="137.16" y2="25.4" width="0.1524" layer="91"/>
-<pinref part="GND25" gate="1" pin="GND"/>
-</segment>
-<segment>
 <pinref part="J23" gate="G$1" pin="2"/>
 <wire x1="101.6" y1="124.46" x2="101.6" y2="111.76" width="0.1524" layer="91"/>
 <pinref part="GND26" gate="1" pin="GND"/>
+</segment>
+<segment>
+<pinref part="J12" gate="J$1" pin="3"/>
+<pinref part="GND23" gate="1" pin="GND"/>
+<wire x1="139.7" y1="124.46" x2="139.7" y2="111.76" width="0.1524" layer="91"/>
+</segment>
+<segment>
+<pinref part="J24" gate="J$1" pin="3"/>
+<pinref part="GND24" gate="1" pin="GND"/>
+<wire x1="121.92" y1="38.1" x2="121.92" y2="25.4" width="0.1524" layer="91"/>
+</segment>
+<segment>
+<pinref part="J25" gate="J$1" pin="3"/>
+<pinref part="GND25" gate="1" pin="GND"/>
+<wire x1="139.7" y1="38.1" x2="139.7" y2="25.4" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="+5V" class="0">
@@ -9743,16 +9743,6 @@ Source: http://www.osram.convergy.de/</description>
 <pinref part="VDD1" gate="G$1" pin="VDD"/>
 </segment>
 <segment>
-<pinref part="J24" gate="J$1" pin="3"/>
-<wire x1="121.92" y1="38.1" x2="121.92" y2="27.94" width="0.1524" layer="91"/>
-<pinref part="VDD12" gate="G$1" pin="VDD"/>
-</segment>
-<segment>
-<pinref part="J25" gate="J$1" pin="3"/>
-<wire x1="139.7" y1="38.1" x2="139.7" y2="27.94" width="0.1524" layer="91"/>
-<pinref part="VDD13" gate="G$1" pin="VDD"/>
-</segment>
-<segment>
 <pinref part="J13" gate="J$1" pin="1"/>
 <pinref part="VDD17" gate="G$1" pin="VDD"/>
 <wire x1="154.94" y1="124.46" x2="154.94" y2="111.76" width="0.1524" layer="91"/>
@@ -9781,9 +9771,19 @@ Source: http://www.osram.convergy.de/</description>
 <wire x1="393.7" y1="208.28" x2="411.48" y2="208.28" width="0.1524" layer="91"/>
 </segment>
 <segment>
-<pinref part="J12" gate="J$1" pin="3"/>
+<pinref part="J12" gate="J$1" pin="2"/>
 <pinref part="VDD7" gate="G$1" pin="VDD"/>
-<wire x1="139.7" y1="124.46" x2="139.7" y2="111.76" width="0.1524" layer="91"/>
+<wire x1="137.16" y1="124.46" x2="137.16" y2="111.76" width="0.1524" layer="91"/>
+</segment>
+<segment>
+<pinref part="J24" gate="J$1" pin="2"/>
+<pinref part="VDD12" gate="G$1" pin="VDD"/>
+<wire x1="119.38" y1="38.1" x2="119.38" y2="27.94" width="0.1524" layer="91"/>
+</segment>
+<segment>
+<pinref part="J25" gate="J$1" pin="2"/>
+<pinref part="VDD13" gate="G$1" pin="VDD"/>
+<wire x1="137.16" y1="38.1" x2="137.16" y2="27.94" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="PH_PROBE" class="0">
