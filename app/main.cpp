@@ -200,7 +200,7 @@ void decodeTempCompensation(std::string &response)
         std::cout << "probe has a temp compensation value of " << response.substr(pos + 1) << "C";
     }
     else {
-        std::cout << "probe temp compensation response cannot be decoded";
+        std::cout << "probe temp compensation response cannot be decoded: " << response;
     }
 }
 
@@ -226,10 +226,12 @@ void phCallback(int cmd, std::string response)
         case AtlasScientificI2C::READING:
 //            std::cout << "PH Value response " << response << std::endl;
             break;
+        case AtlasScientificI2C::SETTEMPCOMPREAD:
         case AtlasScientificI2C::GETTEMPCOMP:
             std::cout << "pH ";
             decodeTempCompensation(response);
             std::cout << std::endl;
+            break;
         default:
             break;
     }
@@ -254,10 +256,12 @@ void doCallback(int cmd, std::string response)
             if (response.find(",0") != std::string::npos)
                 std::cout << "DO probe reports no calibration data..." << std::endl;
             break;
+        case AtlasScientificI2C::SETTEMPCOMPREAD:
         case AtlasScientificI2C::GETTEMPCOMP:
-            std::cout << "pH ";
+            std::cout << "DO ";
             decodeTempCompensation(response);
             std::cout << std::endl;
+            break;
         default:
             break;
     }
@@ -787,7 +791,7 @@ void sendResultData(const struct LocalConfig &lc)
     j["aquarium"]["flowrate"]["hertz"] = lc.fr->hertz();
     j["aquarium"]["ph"] = lc.ph->getPH();
     j["aquarium"]["oxygen"] = lc.oxygen->getDO();
-    std::cout << j.dump(4) << std::endl;
+//    std::cout << j.dump(4) << std::endl;
     if (lc.mqttEnabled && lc.mqttConnected) {
         lc.g_mqtt->publish(NULL, "aquarium/data", j.dump().size(), j.dump().c_str());
     }
@@ -800,9 +804,12 @@ void setTempCompensation(const struct LocalConfig &lc)
 {
     double tc = lc.temp->celsius();
 
+    std::cout << "Setting temp compensation value for probes to " << tc << std::endl;
     if (tc != 0) {
-        lc.ph->setTempCompensationAndRead(tc);
-        lc.oxygen->setTempCompensationAndRead(tc);
+        lc.ph->setTempCompensation(tc);
+        lc.oxygen->setTempCompensation(tc);
+        lc.ph->getTempCompensation();
+        lc.oxygen->getTempCompensation();
     }
 }
 

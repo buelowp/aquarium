@@ -244,8 +244,8 @@ void PotentialHydrogen::setTempCompensationAndRead(uint8_t *buf, int size)
 {
     std::vector<uint8_t> payload;
     
-    payload.push_back('T');
     payload.push_back('R');
+    payload.push_back('T');
     payload.push_back(',');
     
     for (int i = 0; i < size; i++) {
