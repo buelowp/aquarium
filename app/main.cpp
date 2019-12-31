@@ -29,6 +29,7 @@
 #include <chrono>
 #include <cstring>
 #include <iomanip>
+#include <ctime>
 
 #include <gpiointerruptpp.h>
 #include <adaio.h>
@@ -51,6 +52,7 @@
 #define TEN_SECONDS         (ONE_SECOND * 10)
 #define ONE_MINUTE          (ONE_SECOND * 60)
 #define FIFTEEN_MINUTES     (ONE_MINUTE * 15)
+#define ONE_HOUR            (ONE_MINUTE * 60)
 
 #define AIO_FLOWRATE_FEED   "pbuelow/feeds/aquarium.flowrate"
 #define AIO_OXYGEN_FEED     "pbuelow/feeds/aquarium.oxygen"
@@ -772,7 +774,10 @@ void sendResultData(const struct LocalConfig &lc)
     unsigned int result;
     double tc;
     double tf;
+    std::time_t t = std::time(nullptr);
 
+    j["aquarium"]["time"]["epoch"] = t;
+    j["aquarium"]["time"]["local"] = std::asctime(std::localtime(&t));
     result = mcp3424_get_raw(lc.adc, lc.wl_channel);
     if (lc.adc->err) {
         syslog(LOG_ERR, "%s:%d: Unable to get data on channel %d: %s", __FUNCTION__, __LINE__, lc.wl_channel, lc.adc->errstr);
@@ -828,7 +833,7 @@ void mainloop(struct LocalConfig &lc)
     doUpdate.setInterval(dofunc, TEN_SECONDS);
     phUpdate.setInterval(phfunc, TEN_SECONDS);
     sendUpdate.setInterval(updateFunc, ONE_MINUTE);
-    tempCompensation.setTimeout(compFunc, FIFTEEN_MINUTES);
+    tempCompensation.setInterval(compFunc, ONE_HOUR);
     
     setTempCompensation(lc);
     
@@ -845,6 +850,7 @@ void mainloop(struct LocalConfig &lc)
     doUpdate.stop();
     phUpdate.stop();
     sendUpdate.stop();
+    tempCompensation.stop();
 }
 
 int main(int argc, char *argv[])
