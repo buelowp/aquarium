@@ -40,6 +40,7 @@ Temperature::Temperature()
     for (int i = 0; i < v.size(); i++) {
         if (v.at(i).find("28-") != std::string::npos) {
             m_device = v.at(i);
+            m_name = m_device;
             break;
         }
     }
@@ -107,4 +108,6 @@ void Temperature::getTemperature(double &tc, double &tf)
         }
     }
 }
+
+
 

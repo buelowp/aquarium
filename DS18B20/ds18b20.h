@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 <copyright holder> <email>
+ * Copyright (c) 2020 Peter Buelow <email>
  * 
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -23,34 +23,38 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef TEMPERATURE_H
-#define TEMPERATURE_H
+#ifndef DS18B20_H
+#define DS18B20_H
 
-#include <iostream>
-#include <fstream>
 #include <string>
-#include <sstream>
+#include <map>
 #include <vector>
 #include <syslog.h>
 #include <sys/types.h>
 #include <dirent.h>
 
-class Temperature
+#include "temperature.h"
+
+class DS18B20
 {
 public:
-    Temperature();
-    Temperature(std::string);
-    ~Temperature();
+    DS18B20();
+    ~DS18B20();
     
-    void getTemperature(double&, double&);
-    double celsius();
-    double farenheit();
-    bool enabled() { return m_enabled; }
+    int count() { return m_count; }
+    double celsiusReadingByName(std::string &name);
+    double celsiusReadingByIndex(int index);
+    double farenheitReadingByName(std::string &name);
+    double farenheitReadingByIndex(int index);
+    std::map<std::string, double> celsius();
+    std::map<std::string, double> farenheit();
+    std::map<std::string, std::string> devices();
+    void setDeviceName(std::string &device, std::string name);
     
 private:
-    std::string m_device;
-    std::string m_path;
-    bool m_enabled;
+    std::map<int, Temperature*> m_devices;
+    int m_index;
+    int m_count;
 };
 
-#endif // TEMPERATURE_H
+#endif // DS18B20_H
