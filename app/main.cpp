@@ -47,10 +47,10 @@
 #include "mcp3008.h"
 #include "configuration.h"
 
-#define DEFAULT_FR_PIN      15
 #define ONE_SECOND          1000
 #define TEN_SECONDS         (ONE_SECOND * 10)
 #define ONE_MINUTE          (ONE_SECOND * 60)
+#define FIVE_MINUTES        (ONE_MINUTE * 5)
 #define FIFTEEN_MINUTES     (ONE_MINUTE * 15)
 #define ONE_HOUR            (ONE_MINUTE * 60)
 
@@ -392,16 +392,19 @@ void mainloop()
     ITimer phUpdate;
     ITimer sendUpdate;
     ITimer tempCompensation;
+    ITimer aioUpdate;
     
     auto phfunc = []() { Configuration::instance()->m_ph->sendReadCommand(900); };
     auto dofunc = []() { Configuration::instance()->m_oxygen->sendReadCommand(600); };
     auto updateFunc = []() { sendResultData(); };
     auto compFunc = []() { setTempCompensation(); };
+    auto aioFunc = []() { sendAIOData(); };
     
     doUpdate.setInterval(dofunc, TEN_SECONDS);
     phUpdate.setInterval(phfunc, TEN_SECONDS);
     sendUpdate.setInterval(updateFunc, ONE_MINUTE);
     tempCompensation.setInterval(compFunc, ONE_HOUR);
+    aioUpdate.setInterval(aioFunc, FIVE_MINUTES);
     
     setTempCompensation();
     
