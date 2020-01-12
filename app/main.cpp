@@ -373,6 +373,10 @@ void sendResultData()
     }
 }
 
+void sendAIOData()
+{
+}
+
 void setTempCompensation()
 {
     double tc = Configuration::instance()->m_temp->celsius();
