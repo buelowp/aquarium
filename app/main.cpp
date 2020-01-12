@@ -313,7 +313,7 @@ void sendResultData()
     }
 }
 
-void sendAioData()
+void sendAIOData()
 {
 }
 
