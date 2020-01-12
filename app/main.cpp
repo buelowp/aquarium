@@ -224,66 +224,6 @@ void flowRateCallback(GpioInterrupt::MetaData *md)
     
 }
 
-/**
- * \func void sendFlowRateData(struct LocalConfig &lc)
- * \param lc LocalConfig which containst the FlowRate pointer
- * 
- * This will send Flow data to MQTT once a second, and data to aio
- * once a minute. We do a little game to allow the sensor to warmup
- * first and allow for a full minute of counts to provide some meaningful
- * data. To do this, we allow a 61 second warmup period first before
- * we send anything. Then, every 60 seconds after that, we send to
- * Adafruit. We send to MQTT every second after 61 seconds.
- */
-void sendFlowRateData(const struct LocalConfig &lc)
-{
-    static int count = 0;
-    static bool warmup = true;
-    nlohmann::json j;
-    std::string aio = std::to_string(Configuration::instance()->m_fr->gpm());
-
-    j["aquarium"]["flowrate"]["gpm"] = Configuration::instance()->m_fr->gpm();
-    j["aquarium"]["flowrate"]["lpm"] = Configuration::instance()->m_fr->lpm();
-    j["aquarium"]["flowrate"]["hertz"] = Configuration::instance()->m_fr->hertz();
-    
-    std::cout << j.dump(2) << std::endl;
-    /*
-    if (count++ > 60) {
-        Configuration::instance()->m_g_aio->publish(NULL, AIO_FLOWRATE_FEED, aio.size(), aio.c_str());
-        count = 1;
-        
-        if (warmup)
-            warmup = false;
-    }
-    if (!warmup)
-        g_mqtt->publish(NULL, "aquarium/flowrate", payload.size(), payload.c_str());
-    */
-}
-
-void sendTempData()
-{
-    static int count = 0;
-    double tc;
-    double tf;
-    std::string aio;
-    nlohmann::json j;
-    
-    if (!Configuration::instance()->m_mqttEnabled && !Configuration::instance()->m_aioEnabled) {
-        if (Configuration::instance()->m_temp) {
-            Configuration::instance()->m_temp->getTemperature(tc, tf);
-            j["aquarium"]["temperature"]["celsius"] = tc;
-            j["aquarium"]["temperature"]["farenheit"] = tf;
-            std::cout << j.dump(4) << std::endl;
-        }
-/*        
-        if (count++ > 60) {
-            Configuration::instance()->m_g_aio->publish(NULL, AIO_TEMP_FEED, aio.size(), aio.c_str());
-            count = 1;
-        }
-        */
-    }
-}
-
 void aioGenericCallback(AdafruitIO::CallbackType type, int code)
 {
     switch (type) {
@@ -373,6 +313,10 @@ void sendResultData()
     }
 }
 
+void sendAioData()
+{
+}
+
 void setTempCompensation()
 {
     double tc = Configuration::instance()->m_temp->celsius();
@@ -380,9 +324,9 @@ void setTempCompensation()
     std::cout << "Setting temp compensation value for probes to " << tc << std::endl;
     if (tc != 0) {
         Configuration::instance()->m_ph->setTempCompensation(tc);
-        Configuration::instance()->m_oxygen->setTempCompensation(tc);
+//        Configuration::instance()->m_oxygen->setTempCompensation(tc);
         Configuration::instance()->m_ph->getTempCompensation();
-        Configuration::instance()->m_oxygen->getTempCompensation();
+//        Configuration::instance()->m_oxygen->getTempCompensation();
     }
 }
 
@@ -395,12 +339,12 @@ void mainloop()
     ITimer aioUpdate;
     
     auto phfunc = []() { Configuration::instance()->m_ph->sendReadCommand(900); };
-    auto dofunc = []() { Configuration::instance()->m_oxygen->sendReadCommand(600); };
+//    auto dofunc = []() { Configuration::instance()->m_oxygen->sendReadCommand(600); };
     auto updateFunc = []() { sendResultData(); };
     auto compFunc = []() { setTempCompensation(); };
     auto aioFunc = []() { sendAIOData(); };
     
-    doUpdate.setInterval(dofunc, TEN_SECONDS);
+//    doUpdate.setInterval(dofunc, TEN_SECONDS);
     phUpdate.setInterval(phfunc, TEN_SECONDS);
     sendUpdate.setInterval(updateFunc, ONE_MINUTE);
     tempCompensation.setInterval(compFunc, ONE_HOUR);
@@ -533,12 +477,12 @@ int main(int argc, char *argv[])
     GpioInterrupt::instance()->start();
     Configuration::instance()->m_oxygen->setCallback(doCallback);
     Configuration::instance()->m_ph->setCallback(phCallback);
-    
+    /*
     Configuration::instance()->m_oxygen->sendInfoCommand();
     Configuration::instance()->m_oxygen->calibrate(DissolvedOxygen::QUERY, nullptr, 0);
     Configuration::instance()->m_oxygen->getTempCompensation();
     Configuration::instance()->m_oxygen->sendStatusCommand();
-
+*/
     Configuration::instance()->m_ph->sendInfoCommand();
     Configuration::instance()->m_ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
     Configuration::instance()->m_ph->getTempCompensation();

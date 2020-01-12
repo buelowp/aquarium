@@ -72,8 +72,6 @@ bool Configuration::readConfigFile()
     
     config_init(&config);
     if (config_read_file(&config, m_configFile.c_str()) == CONFIG_FALSE) {
-//        syslog(LOG_ERR, "config_read: error in file %s, line %d\n", config_error_file(&config), config_error_line(&config));
-//        std::cerr << __FUNCTION__ << ": config_read: error in file " << config_error_file(&config) << ", line " << config_error_line(&config) << std::endl;
         fprintf(stderr, "%s:%d - %s\n", config_error_file(&config), config_error_line(&config), config_error_text(&config));
         config_destroy(&config);
         return false;
@@ -161,9 +159,6 @@ bool Configuration::readConfigFile()
         fprintf(stderr, "Access to local MQTT is disabled\n");
     }
     
-    if (config_lookup_string(&config, "onewire_device", &wiredevice) == CONFIG_TRUE)
-        m_tempDevice = wiredevice;
-    
     if (config_lookup_int(&config, "onewire_pin", &owpin) == CONFIG_TRUE)
         m_onewirepin = owpin;
     else
@@ -184,14 +179,8 @@ bool Configuration::readConfigFile()
     else
         m_green_led = GREEN_LED;
 
-    if (m_tempDevice.size() > 0) {
-        syslog(LOG_INFO, "DS18B20 device on pin %d using device name %s", m_onewirepin, m_tempDevice.c_str());
-        fprintf(stderr, "DS18B20 device on pin %d using device name %s\n", m_onewirepin, m_tempDevice.c_str());
-    }
-    else {
-        syslog(LOG_INFO, "DS18B20 device on pin %d", m_onewirepin);
-        fprintf(stderr, "DS18B20 device on pin %d\n", m_onewirepin);
-    }
+    syslog(LOG_INFO, "DS18B20 device on pin %d", m_onewirepin);
+    fprintf(stderr, "DS18B20 device on pin %d\n", m_onewirepin);
             
     if (config_lookup_int(&config, "flowrate_pin", &frpin) == CONFIG_TRUE)
         m_flowRatePin = frpin;

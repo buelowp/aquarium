@@ -38,7 +38,7 @@
 #include "mqttclient.h"
 #include "flowrate.h"
 #include "itimer.h"
-#include "temperature.h"
+#include "ds18b20.h"
 #include "mcp3008.h"
 
 class Configuration
@@ -61,7 +61,7 @@ public:
     MQTTClient *m_mqtt;
     DissolvedOxygen *m_oxygen;
     PotentialHydrogen *m_ph;
-    Temperature *m_temp;
+    DS18B20 *m_temp;
     FlowRate *m_fr;
     MCP3008 *m_adc;
     std::string m_aioServer;
@@ -71,7 +71,6 @@ public:
     std::string m_mqttUserName;
     std::string m_mqttPassword;
     std::string m_localId;
-    std::string m_tempDevice;
     std::string m_mcp3008Device;
     bool m_daemonize;
     bool m_aioConnected;
