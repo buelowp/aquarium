@@ -50,12 +50,13 @@ MCP3008::MCP3008(std::string device, int channels) : m_channels(channels), m_ena
         std::cerr << __FUNCTION__ << ": ioctl: SPI_IOC_WR_MAX_SPEED_HZ " << strerror(errno) << errno << std::endl;
         m_enabled = false;
     }
-
+/*
     if (ioctl(m_fd, SPI_IOC_RD_MAX_SPEED_HZ, &MCP3008::CLOCK) == -1) {
         syslog(LOG_ERR, "ioctl: SPI_IOC_RD_MAX_SPEED_HZ %s(%d)", strerror(errno), errno);
         std::cerr << __FUNCTION__ << ": ioctl: SPI_IOC_RD_MAX_SPEED_HZ " << strerror(errno) << errno << std::endl;
         m_enabled = false;
     }
+    */
 }
 
 MCP3008::~MCP3008()

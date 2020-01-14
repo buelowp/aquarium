@@ -70,6 +70,7 @@ bool Configuration::readConfigFile()
     int green;
     int resolution;
     
+    std::cout << __FUNCTION__ << ":" << __LINE__ << ": Staring config file read for " << m_configFile << std::endl;
     config_init(&config);
     if (config_read_file(&config, m_configFile.c_str()) == CONFIG_FALSE) {
         fprintf(stderr, "%s:%d - %s\n", config_error_file(&config), config_error_line(&config), config_error_text(&config));
@@ -179,8 +180,8 @@ bool Configuration::readConfigFile()
     else
         m_green_led = GREEN_LED;
 
-    syslog(LOG_INFO, "DS18B20 device on pin %d", m_onewirepin);
-    fprintf(stderr, "DS18B20 device on pin %d\n", m_onewirepin);
+    syslog(LOG_INFO, "DS18B20 bus on pin %d", m_onewirepin);
+    fprintf(stderr, "DS18B20 bus on pin %d\n", m_onewirepin);
             
     if (config_lookup_int(&config, "flowrate_pin", &frpin) == CONFIG_TRUE)
         m_flowRatePin = frpin;
@@ -218,10 +219,14 @@ bool Configuration::readConfigFile()
         fprintf(stderr, "Resetting syslog debug level to %s\n", debug);
     }
 
-    m_oxygen = new DissolvedOxygen(0, m_o2sensor_address);
-    m_ph = new PotentialHydrogen (0, m_phsensor_address);
+    m_oxygen = new DissolvedOxygen(1, m_o2sensor_address);
+    m_ph = new PotentialHydrogen (1, m_phsensor_address);
+    m_temp = new DS18B20();
+    m_adc = new MCP3008("/dev/spidev0.1", 1);
+    m_fr = new FlowRate();
     
     config_destroy(&config);
+    return true;
 }
 
 /**
@@ -238,7 +243,7 @@ void Configuration::generateLocalId()
 	if (!ifs) {
 		syslog(LOG_ERR, "Unable to open /proc/sys/kernel/hostname for reading");
 		fprintf(stderr, "Unable to open /proc/sys/kernel/hostname for reading");
-		m_localId = "omega";
+		m_localId = "Aquarium";
 	}
 	m_localId.assign((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
 	try {

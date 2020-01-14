@@ -273,6 +273,7 @@ bool readConfig(struct LocalConfig *lc)
     lc->ph->setCallback(phCallback);
     
     config_destroy(&config);
+    return true;
 }
 
 void usage(const char *name)

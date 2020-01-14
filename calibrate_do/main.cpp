@@ -253,6 +253,7 @@ bool readConfig(struct LocalConfig *lc)
     lc->oxygen->setCallback(doCallback);
     
     config_destroy(&config);
+    return true;
 }
 
 void usage(const char *name)

@@ -261,23 +261,6 @@ void usage(const char *name)
     exit(-1);
 }
 
-void startOneWire()
-{
-    std::string program = "insmod w1-gpio-custom bus0=0,";
-    
-    program += std::to_string(Configuration::instance()->m_onewirepin);
-    program += ",0";
-    
-    std::cout << "Executing: " << program << std::endl;
-    system(program.c_str());
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    Configuration::instance()->m_temp = new Temperature();
-    
-    if (!Configuration::instance()->m_temp->enabled()) {
-        setWarningDisplay();
-    }
-}
-
 void getWaterLevel()
 {
 }
@@ -289,21 +272,26 @@ void sendResultData()
     double tc;
     double tf;
     std::time_t t = std::time(nullptr);
+    std::map<std::string, double> readingsC;
+    std::map<std::string, double> readingsF;
 
     j["aquarium"]["time"]["epoch"] = t;
     j["aquarium"]["time"]["local"] = std::asctime(std::localtime(&t));
     j["aquarium"]["waterlevel"] = Configuration::instance()->m_adc->reading(1);
     
     if (Configuration::instance()->m_temp) {
-        Configuration::instance()->m_temp->getTemperature(tc, tf);
-        j["aquarium"]["temperature"]["celsius"] = tc;
-        j["aquarium"]["temperature"]["farenheit"] = tf;
+        readingsC = Configuration::instance()->m_temp->celsius();
+        readingsF = Configuration::instance()->m_temp->farenheit();
+        for (auto it = readingsC.begin(); it != readingsC.end(); ++it) {
+            j["aquarium"]["temperature"][it->first]["celsius"] = it->second;
+            j["aquarium"]["temperature"][it->first]["farenheit"] = readingsF[it->first];
+        }
     }
     j["aquarium"]["flowrate"]["gpm"] = Configuration::instance()->m_fr->gpm();
     j["aquarium"]["flowrate"]["lpm"] = Configuration::instance()->m_fr->lpm();
     j["aquarium"]["flowrate"]["hertz"] = Configuration::instance()->m_fr->hertz();
     j["aquarium"]["ph"] = Configuration::instance()->m_ph->getPH();
-    j["aquarium"]["oxygen"] = Configuration::instance()->m_oxygen->getDO();
+//    j["aquarium"]["oxygen"] = Configuration::instance()->m_oxygen->getDO();
 //    std::cout << j.dump(4) << std::endl;
     if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqttConnected) {
         Configuration::instance()->m_mqtt->publish(NULL, "aquarium/data", j.dump().size(), j.dump().c_str());
@@ -319,7 +307,7 @@ void sendAIOData()
 
 void setTempCompensation()
 {
-    double tc = Configuration::instance()->m_temp->celsius();
+    double tc = Configuration::instance()->m_temp->celsiusReadingByIndex(0);
 
     std::cout << "Setting temp compensation value for probes to " << tc << std::endl;
     if (tc != 0) {
@@ -368,12 +356,6 @@ void mainloop()
     tempCompensation.stop();
 }
 
-void setConfigDefaults()
-{
-    Configuration::instance()->setConfigFile("~/.config/aquarium.conf");
-    Configuration::instance()->m_daemonize = false;
-}
-
 /**
  * \func bool parse_args(int argc, char **argv, std::string &name, std::string &mqtt, int &port)
  * \param arc integer argument count provied by shell
@@ -389,7 +371,9 @@ bool parse_args(int argc, char **argv)
 {
 	int opt;
 	bool rval = true;
-    std::string cf;
+    std::string cf = "~/.config/aquarium.conf";
+    
+    Configuration::instance()->m_daemonize = false;
     
 	if (argv) {
 		while ((opt = getopt(argc, argv, "c:hd")) != -1) {
@@ -412,18 +396,20 @@ bool parse_args(int argc, char **argv)
 		}
 	}
 
-	if ((cf.find("$HOME") == 0) || (cf.at(0) == '~')) {
-        const char* homeDir = getenv("HOME");
-        if (cf.at(0) == '~') {
-            cf.erase(0, 1);
-            cf.insert(0, homeDir);
+	if (cf.size() > 0) {
+        if ((cf.find("$HOME") != std::string::npos) || (cf.at(0) == '~')) {
+            const char* homeDir = getenv("HOME");
+            if (cf.at(0) == '~') {
+                cf.erase(0, 1);
+                cf.insert(0, homeDir);
+            }
+            if (cf.find("$HOME") == 0) {
+                cf.erase(0, 5);
+                cf.insert(0, homeDir);
+            }
+            std::cerr << __FUNCTION__ << ": Changing config file path to " << cf << std::endl;
+            Configuration::instance()->setConfigFile(cf);
         }
-        if (cf.find("$HOME") == 0) {
-            cf.erase(0, 5);
-            cf.insert(0, homeDir);
-        }
-        std::cerr << __FUNCTION__ << ": Changing config file path to " << cf << std::endl;
-        Configuration::instance()->setConfigFile(cf);
     }
 
     return rval;
@@ -437,7 +423,6 @@ int main(int argc, char *argv[])
     openlog(progname.c_str(), LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
     
     syslog(LOG_NOTICE, "Application startup");
-    setConfigDefaults();
     
     if (!parse_args(argc, argv)) {
         std::cerr << "Error parsing command line, exiting..." << std::endl;
@@ -446,7 +431,7 @@ int main(int argc, char *argv[])
     }
     
     // if this goes badly, just die but leave the error LED blinking at 1 hz
-    if (Configuration::instance()->readConfigFile()) {
+    if (!Configuration::instance()->readConfigFile()) {
         std::cerr << "Unable to read configuration file, exiting..." << std::endl;
         syslog(LOG_ERR, "Unable to read configuration file, exiting...");
         exit(-1);
@@ -465,8 +450,6 @@ int main(int argc, char *argv[])
 
     GpioInterrupt::instance()->addPin(Configuration::instance()->m_flowRatePin);
     GpioInterrupt::instance()->setPinCallback(Configuration::instance()->m_flowRatePin, flowRateCallback);
-        
-    startOneWire();
     
     if (Configuration::instance()->m_aioEnabled)
         Configuration::instance()->m_aio = new AdafruitIO(Configuration::instance()->m_localId, Configuration::instance()->m_aioServer, Configuration::instance()->m_aioUserName, Configuration::instance()->m_aioKey, Configuration::instance()->m_aioPort);
