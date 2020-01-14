@@ -152,6 +152,7 @@ bool Configuration::readConfigFile()
         if (config_lookup_string(&config, "mqtt_password", &mqttPassword) == CONFIG_TRUE)
             m_mqttPassword = mqttPassword;
         
+        m_mqtt = new MQTTClient(Configuration::instance()->m_localId, Configuration::instance()->m_mqttServer, Configuration::instance()->m_mqttPort);
         syslog(LOG_INFO, "Access to local MQTT is enabled to %s on port %d", m_mqttServer.c_str(), m_mqttPort);
         fprintf(stderr, "Access to local MQTT is enabled to %s on port %d\n", m_mqttServer.c_str(), m_mqttPort);
     }

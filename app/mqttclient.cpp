@@ -76,8 +76,8 @@ void MQTTClient::on_connect(int rc)
         return;
     }
     
-    if (m_debug)
-        std::cerr << __FUNCTION__ << "Connected with code " << rc << std::endl;
+    std::cerr << __FUNCTION__ << "Connected with code " << rc << std::endl;
+    m_connected = true;
     
     if (m_genericCallback) {
         try {

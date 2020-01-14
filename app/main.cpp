@@ -292,8 +292,8 @@ void sendResultData()
     j["aquarium"]["flowrate"]["hertz"] = Configuration::instance()->m_fr->hertz();
     j["aquarium"]["ph"] = Configuration::instance()->m_ph->getPH();
 //    j["aquarium"]["oxygen"] = Configuration::instance()->m_oxygen->getDO();
-    std::cout << j.dump(4) << std::endl;
-    if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqttConnected) {
+    if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqtt->isConnected()) {
+        std::cout << j.dump(4) << std::endl;
         Configuration::instance()->m_mqtt->publish(NULL, "aquarium/data", j.dump().size(), j.dump().c_str());
     }
     if (Configuration::instance()->m_aioEnabled && Configuration::instance()->m_aioConnected) {
@@ -453,9 +453,6 @@ int main(int argc, char *argv[])
     
     if (Configuration::instance()->m_aioEnabled)
         Configuration::instance()->m_aio = new AdafruitIO(Configuration::instance()->m_localId, Configuration::instance()->m_aioServer, Configuration::instance()->m_aioUserName, Configuration::instance()->m_aioKey, Configuration::instance()->m_aioPort);
-    
-    if (Configuration::instance()->m_mqttEnabled)
-        Configuration::instance()->m_mqtt = new MQTTClient(Configuration::instance()->m_localId, Configuration::instance()->m_mqttServer, Configuration::instance()->m_mqttPort);
     
     GpioInterrupt::instance()->start();
     Configuration::instance()->m_oxygen->setCallback(doCallback);
