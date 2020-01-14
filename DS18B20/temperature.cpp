@@ -49,6 +49,7 @@ Temperature::Temperature()
     
         m_path = "/sys/bus/w1/devices/" + m_device + "/w1_slave";
         syslog(LOG_INFO, "Found 1-wire device %s", m_path.c_str());
+	std::cout << "Found 1-wire device " << m_name << " at " << m_device << std::endl;
     }
     else
         syslog(LOG_ERR, "No 1-wire devices found");
@@ -57,6 +58,7 @@ Temperature::Temperature()
 Temperature::Temperature(std::string device) : m_device(device)
 {
     m_path = "/sys/bus/w1/devices/" + m_device + "/w1_slave";
+    m_name = device;
     m_enabled = true;
 }
 

@@ -292,7 +292,7 @@ void sendResultData()
     j["aquarium"]["flowrate"]["hertz"] = Configuration::instance()->m_fr->hertz();
     j["aquarium"]["ph"] = Configuration::instance()->m_ph->getPH();
 //    j["aquarium"]["oxygen"] = Configuration::instance()->m_oxygen->getDO();
-//    std::cout << j.dump(4) << std::endl;
+    std::cout << j.dump(4) << std::endl;
     if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqttConnected) {
         Configuration::instance()->m_mqtt->publish(NULL, "aquarium/data", j.dump().size(), j.dump().c_str());
     }
