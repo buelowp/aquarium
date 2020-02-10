@@ -37,9 +37,18 @@ ITimer::~ITimer()
 
 void ITimer::setTimeout(std::function<void()> function, int delay)
 {
+    struct timespec st;
+    struct timespec remaining;
+    st.tv_sec = delay / 1000;
+    st.tv_nsec = delay * 100000;
+
     clear = false;
     std::thread t([=]() {
-        std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+        if (nanosleep(&st, nullptr) < 0) {
+            syslog(LOG_ERR, "nanosleep returned error: %s(%d)", strerror(errno), errno);
+            return;
+        }
+        
         if (clear) {
             return;
         }

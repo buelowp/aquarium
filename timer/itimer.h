@@ -28,6 +28,8 @@
 
 #include <functional>
 #include <thread>
+#include <cstring>
+#include <errno.h>
 #include <syslog.h>
 
 class ITimer
