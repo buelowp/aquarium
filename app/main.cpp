@@ -175,9 +175,6 @@ void phCallback(int cmd, std::string response)
             if (response.find(",0") != std::string::npos)
                 std::cout << "pH probe reports no calibration data..." << std::endl;
             break;
-        case AtlasScientificI2C::READING:
-//            std::cout << "PH Value response " << response << std::endl;
-            break;
         case AtlasScientificI2C::SETTEMPCOMPREAD:
         case AtlasScientificI2C::GETTEMPCOMP:
             std::cout << "pH ";
@@ -274,9 +271,13 @@ void sendResultData()
     std::time_t t = std::time(nullptr);
     std::map<std::string, double> readingsC;
     std::map<std::string, double> readingsF;
+    char timebuff[100];
+
+    memset(timebuff, '\0', 100);
+    std::strftime(timebuff, 100, "%c", std::localtime(&t));
 
     j["aquarium"]["time"]["epoch"] = t;
-    j["aquarium"]["time"]["local"] = std::asctime(std::localtime(&t));
+    j["aquarium"]["time"]["local"] = timebuff;
     j["aquarium"]["waterlevel"] = Configuration::instance()->m_adc->reading(1);
     
     if (Configuration::instance()->m_temp) {
@@ -291,7 +292,7 @@ void sendResultData()
     j["aquarium"]["flowrate"]["lpm"] = Configuration::instance()->m_fr->lpm();
     j["aquarium"]["flowrate"]["hertz"] = Configuration::instance()->m_fr->hertz();
     j["aquarium"]["ph"] = Configuration::instance()->m_ph->getPH();
-//    j["aquarium"]["oxygen"] = Configuration::instance()->m_oxygen->getDO();
+    j["aquarium"]["oxygen"] = Configuration::instance()->m_oxygen->getDO();
     if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqtt->isConnected()) {
         std::cout << j.dump(4) << std::endl;
         Configuration::instance()->m_mqtt->publish(NULL, "aquarium/data", j.dump().size(), j.dump().c_str());
@@ -312,9 +313,9 @@ void setTempCompensation()
     std::cout << "Setting temp compensation value for probes to " << tc << std::endl;
     if (tc != 0) {
         Configuration::instance()->m_ph->setTempCompensation(tc);
-//        Configuration::instance()->m_oxygen->setTempCompensation(tc);
+        Configuration::instance()->m_oxygen->setTempCompensation(tc);
         Configuration::instance()->m_ph->getTempCompensation();
-//        Configuration::instance()->m_oxygen->getTempCompensation();
+        Configuration::instance()->m_oxygen->getTempCompensation();
     }
 }
 
@@ -327,12 +328,12 @@ void mainloop()
     ITimer aioUpdate;
     
     auto phfunc = []() { Configuration::instance()->m_ph->sendReadCommand(900); };
-//    auto dofunc = []() { Configuration::instance()->m_oxygen->sendReadCommand(600); };
+    auto dofunc = []() { Configuration::instance()->m_oxygen->sendReadCommand(600); };
     auto updateFunc = []() { sendResultData(); };
     auto compFunc = []() { setTempCompensation(); };
     auto aioFunc = []() { sendAIOData(); };
     
-//    doUpdate.setInterval(dofunc, TEN_SECONDS);
+    doUpdate.setInterval(dofunc, TEN_SECONDS);
     phUpdate.setInterval(phfunc, TEN_SECONDS);
     sendUpdate.setInterval(updateFunc, ONE_MINUTE);
     tempCompensation.setInterval(compFunc, ONE_HOUR);
@@ -457,12 +458,12 @@ int main(int argc, char *argv[])
     GpioInterrupt::instance()->start();
     Configuration::instance()->m_oxygen->setCallback(doCallback);
     Configuration::instance()->m_ph->setCallback(phCallback);
-    /*
+
     Configuration::instance()->m_oxygen->sendInfoCommand();
     Configuration::instance()->m_oxygen->calibrate(DissolvedOxygen::QUERY, nullptr, 0);
     Configuration::instance()->m_oxygen->getTempCompensation();
     Configuration::instance()->m_oxygen->sendStatusCommand();
-*/
+
     Configuration::instance()->m_ph->sendInfoCommand();
     Configuration::instance()->m_ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
     Configuration::instance()->m_ph->getTempCompensation();
