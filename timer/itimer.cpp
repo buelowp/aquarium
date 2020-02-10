@@ -35,12 +35,13 @@ ITimer::~ITimer()
     this->clear = false;
 }
 
-void ITimer::setTimeout(std::function<void()> function, int delay)
+void ITimer::setTimeout(std::function<void()> function, int interval)
 {
     struct timespec st;
-    st.tv_sec = delay / 1000;
-    st.tv_nsec = delay * 100000;
+    st.tv_sec = interval / 1000;
+    st.tv_nsec = (interval % 1000) * 1000000;
 
+    std::cout << __FUNCTION__ << ": interval time of " << interval << std::endl;
     std::cout << __FUNCTION__ << ": Sleeping for " << st.tv_sec << "." << st.tv_nsec << std::endl;
     
     clear = false;
@@ -66,13 +67,27 @@ void ITimer::setTimeout(std::function<void()> function, int delay)
 
 void ITimer::setInterval(std::function<void()> function, int interval)
 {
+    struct timespec st;
+    st.tv_sec = interval / 1000;
+    st.tv_nsec = (interval % 1000) * 1000000;
+
+    std::cout << __FUNCTION__ << ": interval time of " << interval << std::endl;
+    std::cout << __FUNCTION__ << ": Sleeping for " << st.tv_sec << "." << st.tv_nsec << std::endl;
+
     this->clear = false;
     std::thread t([=]() {
         while(true) {
-            if(this->clear) return;
-            std::this_thread::sleep_for(std::chrono::milliseconds(interval));
-            if(this->clear) return;
+            if (nanosleep(&st, nullptr) < 0) {
+                syslog(LOG_ERR, "nanosleep returned error: %s(%d)", strerror(errno), errno);
+                return;
+            }
+            if(this->clear) 
+                return;
+
             function();
+
+            if(this->clear) 
+                return;
         }
     });
     t.detach();
