@@ -38,10 +38,11 @@ ITimer::~ITimer()
 void ITimer::setTimeout(std::function<void()> function, int delay)
 {
     struct timespec st;
-    struct timespec remaining;
     st.tv_sec = delay / 1000;
     st.tv_nsec = delay * 100000;
 
+    std::cout << __FUNCTION__ << ": Sleeping for " << st.tv_sec << "." << st.tv_nsec << std::endl;
+    
     clear = false;
     std::thread t([=]() {
         if (nanosleep(&st, nullptr) < 0) {

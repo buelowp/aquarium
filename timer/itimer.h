@@ -29,6 +29,7 @@
 #include <functional>
 #include <thread>
 #include <cstring>
+#include <iostream>
 #include <errno.h>
 #include <syslog.h>
 
