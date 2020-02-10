@@ -32,6 +32,7 @@
 #include <iostream>
 #include <errno.h>
 #include <syslog.h>
+#include <time.h>
 
 class ITimer
 {

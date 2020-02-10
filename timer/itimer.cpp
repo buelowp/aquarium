@@ -37,19 +37,10 @@ ITimer::~ITimer()
 
 void ITimer::setTimeout(std::function<void()> function, int interval)
 {
-    struct timespec st;
-    st.tv_sec = interval / 1000;
-    st.tv_nsec = (interval % 1000) * 1000000;
-
-    std::cout << __FUNCTION__ << ": interval time of " << interval << std::endl;
-    std::cout << __FUNCTION__ << ": Sleeping for " << st.tv_sec << "." << st.tv_nsec << std::endl;
-    
     clear = false;
-    std::thread t([=]() {
-        if (nanosleep(&st, nullptr) < 0) {
-            syslog(LOG_ERR, "nanosleep returned error: %s(%d)", strerror(errno), errno);
-            return;
-        }
+    std::thread t([=]() 
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(interval));
         
         if (clear) {
             return;
@@ -67,24 +58,20 @@ void ITimer::setTimeout(std::function<void()> function, int interval)
 
 void ITimer::setInterval(std::function<void()> function, int interval)
 {
-    struct timespec st;
-    st.tv_sec = interval / 1000;
-    st.tv_nsec = (interval % 1000) * 1000000;
-
-    std::cout << __FUNCTION__ << ": interval time of " << interval << std::endl;
-    std::cout << __FUNCTION__ << ": Sleeping for " << st.tv_sec << "." << st.tv_nsec << std::endl;
-
     this->clear = false;
-    std::thread t([=]() {
+    std::thread t([=]() 
+    {
         while(true) {
-            if (nanosleep(&st, nullptr) < 0) {
-                syslog(LOG_ERR, "nanosleep returned error: %s(%d)", strerror(errno), errno);
-                return;
-            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(interval));
             if(this->clear) 
                 return;
 
-            function();
+            try {
+                function();
+            }
+            catch (std::exception &e) {
+                syslog(LOG_ERR, "Unable to execute function: %s\n", e.what());
+            }
 
             if(this->clear) 
                 return;
