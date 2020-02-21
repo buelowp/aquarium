@@ -223,7 +223,7 @@ bool Configuration::readConfigFile()
     m_oxygen = new DissolvedOxygen(1, m_o2sensor_address);
     m_ph = new PotentialHydrogen (1, m_phsensor_address);
     m_temp = new DS18B20();
-    m_adc = new MCP3008("/dev/spidev0.1", 1);
+    m_adc = new MCP3008(0);
     m_fr = new FlowRate();
     
     config_destroy(&config);

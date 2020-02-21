@@ -41,6 +41,8 @@ FlowRate& FlowRate::operator++(int)
 {
     if (m_enabled)
         m_count++;
+
+    return *this;
 }
 
 void FlowRate::run()

@@ -28,38 +28,19 @@
 
 #include <iostream>
 #include <string>
-#include <cstdint>
-#include <cstring>
-#include <errno.h>
-#include <unistd.h>
-#include <cstdlib>
-#include <syslog.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <linux/types.h>
-#include <linux/spi/spidev.h>
+#include <wiringPi.h>
+#include <mcp3004.h>
 
-#define ARRAY_SIZE(array) sizeof(array) / sizeof(array[0])
 
 class MCP3008
 {
 public:
-    static constexpr uint8_t MODE = SPI_MODE_0;
-    static constexpr uint8_t BITS = 8;
-    static constexpr uint32_t CLOCK = 1000000;
-    static constexpr uint16_t DELAY = 5;
-    
-    MCP3008(std::string, int);
+    MCP3008(int);
     ~MCP3008();
 
     int reading(int);
     
 private:
-    uint8_t control_bits(uint8_t channel);
-    uint8_t control_bits_differential(uint8_t channel);
-    
-    int m_channels;
-    int m_fd;
     bool m_enabled;
 };
 

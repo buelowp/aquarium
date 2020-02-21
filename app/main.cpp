@@ -278,7 +278,7 @@ void sendResultData()
 
     j["aquarium"]["time"]["epoch"] = t;
     j["aquarium"]["time"]["local"] = timebuff;
-    j["aquarium"]["waterlevel"] = Configuration::instance()->m_adc->reading(1);
+    j["aquarium"]["waterlevel"] = Configuration::instance()->m_adc->reading(0);
     
     if (Configuration::instance()->m_temp) {
         readingsC = Configuration::instance()->m_temp->celsius();
