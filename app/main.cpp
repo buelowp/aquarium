@@ -302,6 +302,10 @@ void sendResultData()
     }
 }
 
+void sendConfigData()
+{
+}
+
 void sendAIOData()
 {
 }
@@ -416,6 +420,24 @@ bool parse_args(int argc, char **argv)
     return rval;
 }
 
+bool testNetwork(std::string server)
+{
+    int count = 0;
+    std::string ping = "ping" + server;
+    
+    while (system(ping.c_str())) {
+        setWarningDisplay();
+        if (count++ == 300) {
+            syslog(LOG_ERR, "Network is not coming up, giving up...");
+            return false;
+        }
+        syslog(LOG_ERR, "Network does not seem to be available, pending...");
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    setNormalDisplay();
+    return true;
+}
+
 int main(int argc, char *argv[])
 {
     std::string progname = basename(argv[0]);
@@ -424,18 +446,18 @@ int main(int argc, char *argv[])
     openlog(progname.c_str(), LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
     
     syslog(LOG_NOTICE, "Application startup");
-    
+        
     if (!parse_args(argc, argv)) {
         std::cerr << "Error parsing command line, exiting..." << std::endl;
         syslog(LOG_ERR, "Error parsing command line, exiting...");
-        exit(0);
+        exit(-1);
     }
     
     // if this goes badly, just die but leave the error LED blinking at 1 hz
     if (!Configuration::instance()->readConfigFile()) {
         std::cerr << "Unable to read configuration file, exiting..." << std::endl;
         syslog(LOG_ERR, "Unable to read configuration file, exiting...");
-        exit(-1);
+        exit(-2);
     }
 
     if (!GpioInterrupt::instance()->addPin(Configuration::instance()->m_green_led, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
@@ -449,6 +471,12 @@ int main(int argc, char *argv[])
 
     initializeLeds();
 
+    // We will assume that if we can get to our local MQTT instance, we can probably get to AdafruitIO as well
+    if (!testNetwork(Configuration::instance()->m_mqttServer)) {
+        syslog(LOG_ERR, "Cannot get to server %s, so we cannot continue", Configuration::instance()->m_mqttServer.c_str());
+        exit(-3);
+    }
+    
     GpioInterrupt::instance()->addPin(Configuration::instance()->m_flowRatePin);
     GpioInterrupt::instance()->setPinCallback(Configuration::instance()->m_flowRatePin, flowRateCallback);
     
@@ -468,6 +496,8 @@ int main(int argc, char *argv[])
     Configuration::instance()->m_ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
     Configuration::instance()->m_ph->getTempCompensation();
     Configuration::instance()->m_ph->sendStatusCommand();
+    
+    sendConfigData();
     
     mainloop();
     

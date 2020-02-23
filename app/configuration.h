@@ -56,6 +56,7 @@ public:
     
     bool readConfigFile();
     void setConfigFile(std::string);
+    unsigned int nextHandle() { return m_handle++; }
     
     AdafruitIO *m_aio;
     MQTTClient *m_mqtt;
@@ -97,6 +98,7 @@ private:
     bool cisCompare(const std::string & str1, const std::string &str2);
     
     std::string m_configFile;
+    unsigned int m_handle;
 };
 
 #endif // CONFIGURATION_H
