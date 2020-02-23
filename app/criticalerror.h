@@ -36,7 +36,9 @@ class CriticalError : public BaseError
 public:
     CriticalError(unsigned int handle, std::string msg, unsigned int timeout = 0);
     ~CriticalError();
-
+    
+    void cancel();
+    void activate();
 };
 
 #endif // CRITICALERROR_H

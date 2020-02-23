@@ -33,8 +33,12 @@
  */
 class FatalError : public BaseError
 {
+public:
     FatalError(unsigned int handle, std::string msg, unsigned int timeout = 0);
     virtual ~FatalError();
+    
+    void cancel();
+    void activate();
 };
 
 #endif // FATALERROR_H

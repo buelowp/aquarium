@@ -56,22 +56,31 @@ public:
     } Priority;
     
     BaseError(unsigned int handle, std::string msg, unsigned int timeout = 0);
-    virtual ~BaseError();
-
-    int priority() const { return m_priority; }
-    int handle() const { return m_handle; }
-    
-    bool operator<(const BaseError &lhs, const BaseError &rhs)
+    ~BaseError();
+    BaseError(const BaseError& be) 
     {
-        return (lhs.priority() < rhs.priority());
+        m_priority = be.priority();
+        m_message = be.message();
+        m_timeout = be.timeout();
+        m_handle = be.handle();
+        m_mqtt = be.client();
     }
+
+    Priority priority() const { return m_priority; }
+    unsigned int handle() const { return m_handle; }
+    std::string message() const { return m_message; }
+    unsigned int timeout() const { return m_timeout; }
+    MQTTClient* client() const { return m_mqtt; }
+    
+    virtual void cancel() = 0;
+    virtual void activate() = 0;
     
 protected:
     MQTTClient *m_mqtt;
     Priority m_priority;
     std::string m_message;
     unsigned int m_timeout;
-    int m_handle;
+    unsigned int m_handle;
 };
 
 #endif // BASEERROR_H

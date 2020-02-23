@@ -28,26 +28,35 @@
 CriticalError::CriticalError(unsigned int handle, std::string msg, unsigned int timeout) : BaseError(handle, msg, timeout)
 {
     m_priority = BaseError::Priority::CRITICAL;
-    nlohmann::json j;
-    
-    j["aquarium"]["error"]["type"] = "critical";
-    j["aquarium"]["error"]["message"] = msg;
-    j["aquarium"]["error"]["handle"] = handle;
-    j["aquarium"]["error"]["timeout"] = timeout;
-    
-    m_mqtt->publish(NULL, "aquarium/error", j.dump().size(), j.dump().c_str());
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 1);
 }
 
 CriticalError::~CriticalError()
+{
+}
+
+void CriticalError::cancel()
 {
     nlohmann::json j;
     
     j["aquarium"]["error"]["type"] = "critical";
     j["aquarium"]["error"]["message"] = "cleared";
-    j["aquarium"]["error"]["handle"] = handle;
-    j["aquarium"]["error"]["timeout"] = timeout;
+    j["aquarium"]["error"]["handle"] = m_handle;
+    j["aquarium"]["error"]["timeout"] = m_timeout;
     
     m_mqtt->publish(NULL, "aquarium/error", j.dump().size(), j.dump().c_str());
     GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 0);
 }
+
+void CriticalError::activate()
+{
+    nlohmann::json j;
+    
+    j["aquarium"]["error"]["type"] = "critical";
+    j["aquarium"]["error"]["message"] = m_message;
+    j["aquarium"]["error"]["handle"] = m_handle;
+    j["aquarium"]["error"]["timeout"] = m_timeout;
+    
+    m_mqtt->publish(NULL, "aquarium/error", j.dump().size(), j.dump().c_str());
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 1);
+}
+

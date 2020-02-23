@@ -46,6 +46,9 @@
 #include "temperature.h"
 #include "mcp3008.h"
 #include "configuration.h"
+#include "fatalerror.h"
+#include "criticalerror.h"
+#include "warningerror.h"
 
 #define ONE_SECOND          1000
 #define TEN_SECONDS         (ONE_SECOND * 10)

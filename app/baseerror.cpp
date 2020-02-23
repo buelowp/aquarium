@@ -33,4 +33,5 @@ BaseError::BaseError(unsigned int handle, std::string msg, unsigned int timeout)
 
 BaseError::~BaseError()
 {
+    delete m_mqtt;
 }

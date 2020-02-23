@@ -31,8 +31,11 @@
 class WarningError : public BaseError
 {
 public:
-    WarningError(unsigned int handle, unsigned int timeout = 0);
+    WarningError(unsigned int handle, std::string msg, unsigned int timeout = 0);
     ~WarningError();
+    
+    void cancel();
+    void activate();
 };
 
 #endif // WARNINGERROR_H

@@ -23,38 +23,33 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#ifndef ERRORHANDLER_H
+#define ERRORHANDLER_H
+
+#include <vector>
+
+#include "warningerror.h"
+#include "criticalerror.h"
 #include "fatalerror.h"
 
-FatalError::FatalError(unsigned int handle, std::string msg, unsigned int timeout) : BaseError(handle, msg, timeout)
+class ErrorHandler
 {
-    m_priority = BaseError::Priority::FATAL;
-}
+public:
+    ErrorHandler();
+    ~ErrorHandler();
+    
+    unsigned int fatal(unsigned int handle, std::string msg);
+    unsigned int critical(unsigned int handle, std::string msg);
+    unsigned int warning(unsigned int handle, std::string msg);
+    
+    void clearFatal(unsigned int handle);
+    void clearCritical(unsigned int handle);
+    void clearWarning(unsigned int handle);
 
-FatalError::~FatalError()
-{
-}
+private:
+    std::map<int, CriticalError> m_criticals;
+    std::map<int, FatalError> m_fatals;
+    std::map<int, WarningError> m_warnings;
+};
 
-void FatalError::cancel()
-{
-    nlohmann::json j;
-    
-    j["aquarium"]["error"]["type"] = "fatal";
-    j["aquarium"]["error"]["message"] = "program exit";
-    j["aquarium"]["error"]["handle"] = m_handle;
-    j["aquarium"]["error"]["timeout"] = m_timeout;
-    
-    m_mqtt->publish(NULL, "aquarium/error", j.dump().size(), j.dump().c_str());
-}
-
-void FatalError::activate()
-{
-    nlohmann::json j;
-    
-    j["aquarium"]["error"]["type"] = "fatal";
-    j["aquarium"]["error"]["message"] = m_message;
-    j["aquarium"]["error"]["handle"] = m_handle;
-    j["aquarium"]["error"]["timeout"] = m_timeout;
-    
-    m_mqtt->publish(NULL, "aquarium/error", j.dump().size(), j.dump().c_str());
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 1);
-}
+#endif // ERRORHANDLER_H

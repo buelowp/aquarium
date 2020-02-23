@@ -28,26 +28,34 @@
 WarningError::WarningError(unsigned int handle, std::string msg, unsigned int timeout) : BaseError(handle, msg, timeout)
 {
     m_priority = BaseError::Priority::WARNING;
-    nlohmann::json j;
-    
-    j["aquarium"]["error"]["type"] = "warning";
-    j["aquarium"]["error"]["message"] = msg;
-    j["aquarium"]["error"]["handle"] = handle;
-    j["aquarium"]["error"]["timeout"] = timeout;
-    
-    m_mqtt->publish(NULL, "aquarium/error", j.dump().size(), j.dump().c_str());
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellow_led, 1);
 }
 
 WarningError::~WarningError()
+{
+}
+
+void WarningError::cancel()
 {
     nlohmann::json j;
     
     j["aquarium"]["error"]["type"] = "warning";
     j["aquarium"]["error"]["message"] = "cleared";
-    j["aquarium"]["error"]["handle"] = handle;
-    j["aquarium"]["error"]["timeout"] = 0;
+    j["aquarium"]["error"]["handle"] = m_handle;
+    j["aquarium"]["error"]["timeout"] = m_timeout;
     
     m_mqtt->publish(NULL, "aquarium/error", j.dump().size(), j.dump().c_str());
     GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellow_led, 0);
+}
+
+void WarningError::activate()
+{
+    nlohmann::json j;
+    
+    j["aquarium"]["error"]["type"] = "warning";
+    j["aquarium"]["error"]["message"] = m_message;
+    j["aquarium"]["error"]["handle"] = m_handle;
+    j["aquarium"]["error"]["timeout"] = m_timeout;
+    
+    m_mqtt->publish(NULL, "aquarium/error", j.dump().size(), j.dump().c_str());
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellow_led, 1);
 }
