@@ -37,6 +37,10 @@ ITimer::~ITimer()
 
 void ITimer::setTimeout(std::function<void()> function, int interval)
 {
+    // 1 minute timeouts tend to be off by 2ish seconds, so let's see if we can fix that a bit
+    if (interval >= 1000 * 60)
+        interval -= 1500;
+    
     clear = false;
     std::thread t([=]() 
     {
@@ -58,6 +62,10 @@ void ITimer::setTimeout(std::function<void()> function, int interval)
 
 void ITimer::setInterval(std::function<void()> function, int interval)
 {
+    // 1 minute timeouts tend to be off by 2ish seconds, so let's see if we can fix that a bit
+    if (interval >= 1000 * 60)
+        interval -= 1500;
+    
     this->clear = false;
     std::thread t([=]() 
     {

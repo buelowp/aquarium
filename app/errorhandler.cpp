@@ -43,6 +43,7 @@ unsigned int ErrorHandler::critical (unsigned int handle, std::string msg)
     
     m_criticals[handle] = err;
     m_storedErrors++;
+    return handle;
 }
 
 unsigned int ErrorHandler::fatal ( unsigned int handle, std::string msg )
@@ -52,6 +53,7 @@ unsigned int ErrorHandler::fatal ( unsigned int handle, std::string msg )
     
     m_fatals[handle] = err;
     m_storedErrors++;
+    return handle;
 }
 
 unsigned int ErrorHandler::warning ( unsigned int handle, std::string msg )
@@ -63,6 +65,7 @@ unsigned int ErrorHandler::warning ( unsigned int handle, std::string msg )
     
     m_warnings[handle] = err;
     m_storedErrors++;
+    return handle;
 }
 
 void ErrorHandler::clearCritical ( unsigned int handle )

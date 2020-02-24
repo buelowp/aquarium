@@ -74,27 +74,6 @@ void eternalBlinkAndDie(int pin, int millihz)
     }
 }
 
-void setNormalDisplay()
-{
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_green_led, 1);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellow_led, 0);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 0);    
-}
-
-void setWarningDisplay()
-{
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_green_led, 0);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellow_led, 1);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 0);    
-}
-
-void setErrorDisplay()
-{
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_green_led, 0);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellow_led, 0);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 1);    
-}
-
 void initializeLeds()
 {
     GpioInterrupt::instance()->setValue(Configuration::instance()->m_green_led, 1);
@@ -426,10 +405,11 @@ bool parse_args(int argc, char **argv)
 bool testNetwork(std::string server)
 {
     int count = 0;
+    unsigned int handle;
     std::string ping = "ping" + server;
     
     while (system(ping.c_str())) {
-        setWarningDisplay();
+        handle = Configuration::instance()->m_errors.warning(Configuration::instance()->nextHandle(), "No Network");
         if (count++ == 300) {
             syslog(LOG_ERR, "Network is not coming up, giving up...");
             return false;
@@ -437,7 +417,7 @@ bool testNetwork(std::string server)
         syslog(LOG_ERR, "Network does not seem to be available, pending...");
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
-    setNormalDisplay();
+    Configuration::instance()->m_errors.clearWarning(handle);
     return true;
 }
 
@@ -477,6 +457,8 @@ int main(int argc, char *argv[])
     // We will assume that if we can get to our local MQTT instance, we can probably get to AdafruitIO as well
     if (!testNetwork(Configuration::instance()->m_mqttServer)) {
         syslog(LOG_ERR, "Cannot get to server %s, so we cannot continue", Configuration::instance()->m_mqttServer.c_str());
+        Configuration::instance()->m_errors.fatal(0, "Network Not Available");
+        std::this_thread::sleep_for(std::chrono::seconds(1));
         exit(-3);
     }
     

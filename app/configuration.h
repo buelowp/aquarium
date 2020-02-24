@@ -40,6 +40,7 @@
 #include "itimer.h"
 #include "ds18b20.h"
 #include "mcp3008.h"
+#include "errorhandler.h"
 
 class Configuration
 {
@@ -65,6 +66,7 @@ public:
     DS18B20 *m_temp;
     FlowRate *m_fr;
     MCP3008 *m_adc;
+    ErrorHandler m_errors;
     std::string m_aioServer;
     std::string m_aioUserName;
     std::string m_aioKey;

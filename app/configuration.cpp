@@ -27,7 +27,7 @@
 
 Configuration::Configuration()
 {
-
+    m_handle = 1;
 }
 
 Configuration::~Configuration()
