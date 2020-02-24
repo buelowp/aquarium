@@ -27,6 +27,7 @@
 
 ErrorHandler::ErrorHandler()
 {
+    m_storedErrors = 0;
 }
 
 ErrorHandler::~ErrorHandler()
@@ -41,13 +42,16 @@ unsigned int ErrorHandler::critical (unsigned int handle, std::string msg)
         err.activate();
     
     m_criticals[handle] = err;
+    m_storedErrors++;
 }
 
 unsigned int ErrorHandler::fatal ( unsigned int handle, std::string msg )
 {
     FatalError err(handle, msg);
+    err.activate();
     
     m_fatals[handle] = err;
+    m_storedErrors++;
 }
 
 unsigned int ErrorHandler::warning ( unsigned int handle, std::string msg )
@@ -58,6 +62,7 @@ unsigned int ErrorHandler::warning ( unsigned int handle, std::string msg )
         err.activate();
     
     m_warnings[handle] = err;
+    m_storedErrors++;
 }
 
 void ErrorHandler::clearCritical ( unsigned int handle )
@@ -67,6 +72,23 @@ void ErrorHandler::clearCritical ( unsigned int handle )
         CriticalError err = search->second;
         err.cancel();
         m_criticals.erase(search);
+        m_storedErrors--;
+    }
+    
+    if (m_criticals.size() == 0) {
+        if (m_warnings.size()) {
+            auto it = m_warnings.begin();
+            WarningError err = it->second;
+            err.activate();
+        }
+    }
+    else {
+        auto it = m_criticals.begin();
+        CriticalError err = it->second;
+        err.activate();
+    }
+    if (m_storedErrors == 0) {
+        GpioInterrupt::instance()->setValue(Configuration::instance()->m_green_led, 1);
     }
 }
 
@@ -77,6 +99,28 @@ void ErrorHandler::clearFatal ( unsigned int handle )
         FatalError err = search->second;
         err.cancel();
         m_fatals.erase(search);
+        m_storedErrors--;
+    }
+    
+    if (m_fatals.size() == 0) {
+        if (m_criticals.size()) {
+            auto it = m_criticals.begin();
+            CriticalError err = it->second;
+            err.activate();
+        }
+        else if (m_warnings.size()) {
+            auto it = m_warnings.begin();
+            WarningError err = it->second;
+            err.activate();
+        }
+    }
+    else {
+        auto it = m_fatals.begin();
+        FatalError err = it->second;
+        err.activate();
+    }
+    if (m_storedErrors == 0) {
+        GpioInterrupt::instance()->setValue(Configuration::instance()->m_green_led, 1);
     }
 }
 
@@ -88,4 +132,8 @@ void ErrorHandler::clearWarning ( unsigned int handle )
         err.cancel();
         m_warnings.erase(search);
     }
+    if (m_storedErrors == 0) {
+        GpioInterrupt::instance()->setValue(Configuration::instance()->m_green_led, 1);
+    }
+
 }

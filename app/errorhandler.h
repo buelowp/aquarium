@@ -50,6 +50,7 @@ private:
     std::map<int, CriticalError> m_criticals;
     std::map<int, FatalError> m_fatals;
     std::map<int, WarningError> m_warnings;
+    int m_storedErrors;
 };
 
 #endif // ERRORHANDLER_H

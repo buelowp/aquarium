@@ -36,6 +36,7 @@ class FatalError : public BaseError
 public:
     FatalError(unsigned int handle, std::string msg, unsigned int timeout = 0);
     virtual ~FatalError();
+    FatalError(const FatalError& fe) : BaseError(fe) {}
     
     void cancel();
     void activate();
