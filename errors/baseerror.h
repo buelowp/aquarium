@@ -27,10 +27,8 @@
 #define BASEERROR_H
 
 #include <string>
-#include <gpiointerruptpp.h>
-
-#include "mqttclient.h"
-#include "configuration.h"
+#include <iostream>
+#include <nlohmann/json.hpp>
 
 /**
  * \class BaseError
@@ -46,6 +44,10 @@
  * Errors are pushed into the queue by the priority level with
  * warning being the lowest priority.
  */
+
+#include <nlohmann/json.hpp>
+#include "mqttclient.h"
+
 class BaseError
 {
 public:
@@ -55,16 +57,9 @@ public:
         FATAL = 2
     } Priority;
     
-    BaseError(unsigned int handle, std::string msg, unsigned int timeout = 0);
+    BaseError();
+    BaseError(unsigned int handle, std::string msg, MQTTClient *client = nullptr, unsigned int timeout = 0);
     ~BaseError();
-    BaseError(const BaseError& be) 
-    {
-        m_priority = be.priority();
-        m_message = be.message();
-        m_timeout = be.timeout();
-        m_handle = be.handle();
-        m_mqtt = be.client();
-    }
 
     Priority priority() const { return m_priority; }
     unsigned int handle() const { return m_handle; }

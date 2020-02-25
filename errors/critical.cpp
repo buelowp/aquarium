@@ -23,19 +23,51 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef WARNINGERROR_H
-#define WARNINGERROR_H
+#include "critical.h"
 
-#include "baseerror.h"
-
-class WarningError : public BaseError
+Critical::Critical()
 {
-public:
-    WarningError(unsigned int handle, std::string msg, unsigned int timeout = 0);
-    ~WarningError();
-    
-    void cancel();
-    void activate();
-};
+    m_handle = 0;
+    m_timeout = 0;
+    m_priority = BaseError::Priority::CRITICAL;
+}
 
-#endif // WARNINGERROR_H
+Critical::Critical(const Critical& ce)
+{
+    m_priority = ce.priority();
+    m_message = ce.message();
+    m_timeout = ce.timeout();
+    m_handle = ce.handle();
+    m_mqtt = ce.client();
+}
+
+Critical::Critical(unsigned int handle, std::string msg, MQTTClient *client, unsigned int timeout) : BaseError(handle, msg, client, timeout)
+{
+    m_priority = BaseError::Priority::CRITICAL;
+}
+
+Critical::~Critical()
+{
+}
+
+void Critical::cancel()
+{
+    nlohmann::json j;
+    
+    j["aquarium"]["error"]["type"] = "critical";
+    j["aquarium"]["error"]["message"] = "cleared";
+    j["aquarium"]["error"]["handle"] = m_handle;
+    j["aquarium"]["error"]["timeout"] = m_timeout;
+    std::cout << j.dump(4);
+}
+
+void Critical::activate()
+{
+    nlohmann::json j;
+    
+    j["aquarium"]["error"]["type"] = "critical";
+    j["aquarium"]["error"]["message"] = m_message;
+    j["aquarium"]["error"]["handle"] = m_handle;
+    j["aquarium"]["error"]["timeout"] = m_timeout;
+    std::cout << j.dump(4);
+}

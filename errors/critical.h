@@ -23,34 +23,25 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ERRORHANDLER_H
-#define ERRORHANDLER_H
+#ifndef CRITICALERROR_H
+#define CRITICALERROR_H
 
-#include <vector>
+#include "baseerror.h"
+#include "mqttclient.h"
 
-#include "warningerror.h"
-#include "criticalerror.h"
-#include "fatalerror.h"
-
-class ErrorHandler
+/**
+ * @todo write docs
+ */
+class Critical : public BaseError
 {
 public:
-    ErrorHandler();
-    ~ErrorHandler();
+    Critical();
+    Critical(unsigned int handle, std::string msg, MQTTClient *client = nullptr, unsigned int timeout = 0);
+    Critical(const Critical &ce);
+    ~Critical();
     
-    unsigned int fatal(unsigned int handle, std::string msg);
-    unsigned int critical(unsigned int handle, std::string msg);
-    unsigned int warning(unsigned int handle, std::string msg);
-    
-    void clearFatal(unsigned int handle);
-    void clearCritical(unsigned int handle);
-    void clearWarning(unsigned int handle);
-
-private:
-    std::map<int, CriticalError> m_criticals;
-    std::map<int, FatalError> m_fatals;
-    std::map<int, WarningError> m_warnings;
-    int m_storedErrors;
+    void cancel();
+    void activate();
 };
 
-#endif // ERRORHANDLER_H
+#endif // CRITICALERROR_H

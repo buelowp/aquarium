@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020 <copyright holder> <email>
- *
+ * 
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -9,10 +9,10 @@
  * copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following
  * conditions:
- *
+ * 
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- *
+ * 
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -23,40 +23,20 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "criticalerror.h"
+#include "baseerror.h"
 
-CriticalError::CriticalError(unsigned int handle, std::string msg, unsigned int timeout) : BaseError(handle, msg, timeout)
+BaseError::BaseError()
 {
-    m_priority = BaseError::Priority::CRITICAL;
+    m_timeout = 0;
+    m_handle = 0;
+    m_priority = Priority::FATAL;
 }
 
-CriticalError::~CriticalError()
+BaseError::BaseError(unsigned int handle, std::string msg, MQTTClient *client, unsigned int timeout) :
+    m_message(msg), m_timeout(timeout), m_mqtt(client), m_handle(handle)
 {
 }
 
-void CriticalError::cancel()
+BaseError::~BaseError()
 {
-    nlohmann::json j;
-    
-    j["aquarium"]["error"]["type"] = "critical";
-    j["aquarium"]["error"]["message"] = "cleared";
-    j["aquarium"]["error"]["handle"] = m_handle;
-    j["aquarium"]["error"]["timeout"] = m_timeout;
-    
-    m_mqtt->publish(NULL, "aquarium/error", j.dump().size(), j.dump().c_str());
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 0);
 }
-
-void CriticalError::activate()
-{
-    nlohmann::json j;
-    
-    j["aquarium"]["error"]["type"] = "critical";
-    j["aquarium"]["error"]["message"] = m_message;
-    j["aquarium"]["error"]["handle"] = m_handle;
-    j["aquarium"]["error"]["timeout"] = m_timeout;
-    
-    m_mqtt->publish(NULL, "aquarium/error", j.dump().size(), j.dump().c_str());
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 1);
-}
-

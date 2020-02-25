@@ -12,7 +12,7 @@ set (CMAKE_THREAD_PREFER_PTHREAD TRUE)
 
 find_package (Threads REQUIRED)
 
-include_directories (${CMAKE_SOURCE_DIR}/timer ${CMAKE_SOURCE_DIR}/atlas ${CMAKE_SOURCE_DIR}/mcp3008 ${CMAKE_SOURCE_DIR}/DS18B20)
+include_directories (${CMAKE_SOURCE_DIR}/timer ${CMAKE_SOURCE_DIR}/atlas ${CMAKE_SOURCE_DIR}/mcp3008 ${CMAKE_SOURCE_DIR}/DS18B20 ${CMAKE_SOURCE_DIR}/errors)
 add_executable (${PROJECT_NAME} ${SOURCES})
-target_link_libraries (${PROJECT_NAME} Threads::Threads -lwiringPi -lgpiointerruptpp -ladafruitio -lmosquittopp -lconfig ${CMAKE_BINARY_DIR}/atlas/libatlas.a ${CMAKE_BINARY_DIR}/timer/libtimer.a ${CMAKE_BINARY_DIR}/mcp3008/libmcp3008.a ${CMAKE_BINARY_DIR}/DS18B20/libds18b20.a)
+target_link_libraries (${PROJECT_NAME} Threads::Threads -lwiringPi -lgpiointerruptpp -ladafruitio -lmosquittopp -lconfig ${CMAKE_BINARY_DIR}/atlas/libatlas.a ${CMAKE_BINARY_DIR}/timer/libtimer.a ${CMAKE_BINARY_DIR}/mcp3008/libmcp3008.a ${CMAKE_BINARY_DIR}/DS18B20/libds18b20.a ${CMAKE_BINARY_DIR}/errors/liberrors.a)
 

@@ -23,23 +23,21 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef FATALERROR_H
-#define FATALERROR_H
+#ifndef WARNINGERROR_H
+#define WARNINGERROR_H
 
 #include "baseerror.h"
 
-/**
- * @todo write docs
- */
-class FatalError : public BaseError
+class Warning : public BaseError
 {
 public:
-    FatalError(unsigned int handle, std::string msg, unsigned int timeout = 0);
-    virtual ~FatalError();
-    FatalError(const FatalError& fe) : BaseError(fe) {}
+    Warning();
+    Warning(unsigned int handle, std::string msg, MQTTClient *client = nullptr, unsigned int timeout = 0);
+    Warning(const Warning &we);
+    ~Warning();
     
     void cancel();
     void activate();
 };
 
-#endif // FATALERROR_H
+#endif // WARNINGERROR_H

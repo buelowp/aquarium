@@ -23,22 +23,34 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef CRITICALERROR_H
-#define CRITICALERROR_H
+#ifndef ERRORHANDLER_H
+#define ERRORHANDLER_H
 
-#include "baseerror.h"
+#include <vector>
 
-/**
- * @todo write docs
- */
-class CriticalError : public BaseError
+#include "warning.h"
+#include "critical.h"
+#include "fatal.h"
+
+class ErrorHandler
 {
 public:
-    CriticalError(unsigned int handle, std::string msg, unsigned int timeout = 0);
-    ~CriticalError();
+    ErrorHandler();
+    ~ErrorHandler();
     
-    void cancel();
-    void activate();
+    unsigned int fatal(unsigned int handle, std::string msg);
+    unsigned int critical(unsigned int handle, std::string msg);
+    unsigned int warning(unsigned int handle, std::string msg);
+    
+    void clearFatal(unsigned int handle);
+    void clearCritical(unsigned int handle);
+    void clearWarning(unsigned int handle);
+
+private:
+    std::map<int, Critical> m_criticals;
+    std::map<int, Fatal> m_fatals;
+    std::map<int, Warning> m_warnings;
+    int m_storedErrors;
 };
 
-#endif // CRITICALERROR_H
+#endif // ERRORHANDLER_H

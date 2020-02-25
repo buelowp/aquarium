@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020 <copyright holder> <email>
- * 
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -9,10 +9,10 @@
  * copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following
  * conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -23,15 +23,51 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "baseerror.h"
+#include "warning.h"
 
-BaseError::BaseError(unsigned int handle, std::string msg, unsigned int timeout) :
-    m_message(msg), m_timeout(timeout), m_handle(handle)
+Warning::Warning()
 {
-    m_mqtt = new MQTTClient(Configuration::instance()->m_localId, Configuration::instance()->m_mqttServer, Configuration::instance()->m_mqttPort);
+    m_handle = 0;
+    m_timeout = 0;
+    m_priority = BaseError::Priority::WARNING;
 }
 
-BaseError::~BaseError()
+Warning::Warning(const Warning& we)
 {
-    delete m_mqtt;
+    m_priority = we.priority();
+    m_message = we.message();
+    m_timeout = we.timeout();
+    m_handle = we.handle();
+    m_mqtt = we.client();
+}
+
+Warning::Warning(unsigned int handle, std::string msg, MQTTClient *client, unsigned int timeout) : BaseError(handle, msg, client, timeout)
+{
+    m_priority = BaseError::Priority::WARNING;
+}
+
+Warning::~Warning()
+{
+}
+
+void Warning::cancel()
+{
+    nlohmann::json j;
+    
+    j["aquarium"]["error"]["type"] = "warning";
+    j["aquarium"]["error"]["message"] = "cleared";
+    j["aquarium"]["error"]["handle"] = m_handle;
+    j["aquarium"]["error"]["timeout"] = m_timeout;
+    std::cout << j.dump(4);
+}
+
+void Warning::activate()
+{
+    nlohmann::json j;
+    
+    j["aquarium"]["error"]["type"] = "warning";
+    j["aquarium"]["error"]["message"] = m_message;
+    j["aquarium"]["error"]["handle"] = m_handle;
+    j["aquarium"]["error"]["timeout"] = m_timeout;
+    std::cout << j.dump(4);
 }

@@ -23,18 +23,34 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "fatalerror.h"
+#include "fatal.h"
 
-FatalError::FatalError(unsigned int handle, std::string msg, unsigned int timeout) : BaseError(handle, msg, timeout)
+Fatal::Fatal()
+{
+    m_handle = 0;
+    m_timeout = 0;
+    m_priority = BaseError::Priority::FATAL;
+}
+
+Fatal::Fatal(const Fatal& fe) 
+{
+    m_priority = fe.priority();
+    m_message = fe.message();
+    m_timeout = fe.timeout();
+    m_handle = fe.handle();
+    m_mqtt = fe.client();
+}
+
+Fatal::Fatal(unsigned int handle, std::string msg, MQTTClient *client , unsigned int timeout) : BaseError(handle, msg, client, timeout)
 {
     m_priority = BaseError::Priority::FATAL;
 }
 
-FatalError::~FatalError()
+Fatal::~Fatal()
 {
 }
 
-void FatalError::cancel()
+void Fatal::cancel()
 {
     nlohmann::json j;
     
@@ -42,11 +58,14 @@ void FatalError::cancel()
     j["aquarium"]["error"]["message"] = "program exit";
     j["aquarium"]["error"]["handle"] = m_handle;
     j["aquarium"]["error"]["timeout"] = m_timeout;
+
+    if (m_mqtt)
+        m_mqtt->publish(NULL, "aquarium/error", j.dump().size(), j.dump().c_str());
     
-    m_mqtt->publish(NULL, "aquarium/error", j.dump().size(), j.dump().c_str());
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 0);
 }
 
-void FatalError::activate()
+void Fatal::activate()
 {
     nlohmann::json j;
     
@@ -54,7 +73,9 @@ void FatalError::activate()
     j["aquarium"]["error"]["message"] = m_message;
     j["aquarium"]["error"]["handle"] = m_handle;
     j["aquarium"]["error"]["timeout"] = m_timeout;
+
+    if (m_mqtt)
+        m_mqtt->publish(NULL, "aquarium/error", j.dump().size(), j.dump().c_str());
     
-    m_mqtt->publish(NULL, "aquarium/error", j.dump().size(), j.dump().c_str());
     GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 1);
 }
