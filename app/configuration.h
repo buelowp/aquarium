@@ -38,7 +38,7 @@
 #include "mqttclient.h"
 #include "flowrate.h"
 #include "itimer.h"
-#include "ds18b20.h"
+#include "temperature.h"
 #include "mcp3008.h"
 #include "errorhandler.h"
 
@@ -63,7 +63,7 @@ public:
     MQTTClient *m_mqtt;
     DissolvedOxygen *m_oxygen;
     PotentialHydrogen *m_ph;
-    DS18B20 *m_temp;
+    Temperature *m_temp;
     FlowRate *m_fr;
     MCP3008 *m_adc;
     ErrorHandler m_errors;
@@ -95,6 +95,7 @@ public:
     int m_aioPort;
     int m_flowRatePin;
     int m_mqttPort;
+    int m_adcWaterLevelIndex;
 
 private:
     Configuration();

@@ -43,7 +43,7 @@ public:
     Temperature(std::string, std::string);
     ~Temperature();
     
-    static double convertToFarenheit(double c)
+    double convertToFarenheit(double c)
     {
         return ((c / 1000) * 1.8) + 32;
     }

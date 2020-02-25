@@ -273,19 +273,22 @@ void sendResultData()
 
     j["aquarium"]["time"]["epoch"] = t;
     j["aquarium"]["time"]["local"] = timebuff;
-    j["aquarium"]["waterlevel"] = Configuration::instance()->m_adc->reading(0);
+    j["aquarium"]["waterlevel"] = Configuration::instance()->m_adc->reading(Configuration::instance()->m_adcWaterLevelIndex);
     
-    if (Configuration::instance()->m_temp) {
-        readingsC = Configuration::instance()->m_temp->celsius();
-        readingsF = Configuration::instance()->m_temp->farenheit();
-        for (auto it = readingsC.begin(); it != readingsC.end(); ++it) {
+    if (Configuration::instance()->m_temp->enabled()) {
+        std::map<std::string, double> readings;
+        Configuration::instance()->m_temp->getAllTemperatures(readings);
+        auto it = readings.begin();
+        while (it != readings.end()) {
             j["aquarium"]["temperature"][it->first]["celsius"] = it->second;
-            j["aquarium"]["temperature"][it->first]["farenheit"] = readingsF[it->first];
+            j["aquarium"]["temperature"][it->first]["farenheit"] = Configuration::instance()->m_temp->convertToFarenheit(it->second);
         }
     }
+/*
     j["aquarium"]["flowrate"]["gpm"] = Configuration::instance()->m_fr->gpm();
     j["aquarium"]["flowrate"]["lpm"] = Configuration::instance()->m_fr->lpm();
     j["aquarium"]["flowrate"]["hertz"] = Configuration::instance()->m_fr->hertz();
+*/
     j["aquarium"]["ph"] = Configuration::instance()->m_ph->getPH();
     j["aquarium"]["oxygen"] = Configuration::instance()->m_oxygen->getDO();
     if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqtt->isConnected()) {
