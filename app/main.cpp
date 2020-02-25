@@ -98,40 +98,53 @@ bool cisCompare(const std::string & str1, const std::string &str2)
             ));
 }
 
-void decodeStatusResponse(std::string &response)
+void decodeStatusResponse(std::string which, std::string &response)
 {
     int pos = response.find_last_of(",");
     double voltage;
     
     if (pos != std::string::npos) {
         voltage = std::stod(response.substr(pos + 1));
-        if (voltage > 3)
+        if (voltage > 3) {
             std::cout << "probe is operating normally, reporting voltage " << voltage;
+        }
         else 
             std::cout << "probe is reporting an unusual voltage (" << voltage << "), it may not be operating correctly.";
+        if (which == "pH")
+            Configuration::instance()->m_phVoltage = response.substr(pos + 1);
+        else if (which == "DO")
+            Configuration::instance()->m_o2Voltage = response.substr(pos + 1);
     }
     else {
         std::cout << "probe status cannot be decoded";
     }
 }
 
-void decodeInfoResponse(std::string &response)
+void decodeInfoResponse(std::string which, std::string &response)
 {
     int pos = response.find_last_of(",");
     
     if (pos != std::string::npos) {
         std::cout << "probe is running firmware version " << response.substr(pos + 1);
+        if (which == "pH")
+            Configuration::instance()->m_phVersion = response.substr(pos + 1);
+        else if (which == "DO")
+            Configuration::instance()->m_o2Version = response.substr(pos + 1);
     }
     else {
         std::cout << "probe info response cannot be decoded";
     }
 }
 
-void decodeTempCompensation(std::string &response)
+void decodeTempCompensation(std::string which, std::string &response)
 {
     int pos = response.find_last_of(",");
     if (pos != std::string::npos) {
         std::cout << "probe has a temp compensation value of " << response.substr(pos + 1) << "C";
+        if (which == "pH")
+            Configuration::instance()->m_phTempComp = response.substr(pos + 1);
+        else if (which == "DO")
+            Configuration::instance()->m_o2TempComp = response.substr(pos + 1);
     }
     else {
         std::cout << "probe temp compensation response cannot be decoded: " << response;
@@ -144,13 +157,13 @@ void phCallback(int cmd, std::string response)
         case AtlasScientificI2C::INFO:
             syslog(LOG_NOTICE, "got pH probe info event: %s\n", response.c_str());
             std::cout << "pH "; 
-            decodeInfoResponse(response);
+            decodeInfoResponse("pH", response);
             std::cout << std::endl;
             break;
         case AtlasScientificI2C::STATUS:
             syslog(LOG_NOTICE, "got pH probe status event: %s\n", response.c_str());
             std::cout << "pH ";
-            decodeStatusResponse(response);
+            decodeStatusResponse("pH", response);
             std::cout << std::endl;
             break;
         case AtlasScientificI2C::CALIBRATE:
@@ -160,7 +173,7 @@ void phCallback(int cmd, std::string response)
         case AtlasScientificI2C::SETTEMPCOMPREAD:
         case AtlasScientificI2C::GETTEMPCOMP:
             std::cout << "pH ";
-            decodeTempCompensation(response);
+            decodeTempCompensation("pH", response);
             std::cout << std::endl;
             break;
         default:
@@ -174,13 +187,13 @@ void doCallback(int cmd, std::string response)
         case AtlasScientificI2C::INFO:
             syslog(LOG_NOTICE, "got DO probe info event: %s\n", response.c_str());
             std::cout << "DO ";
-            decodeInfoResponse(response);
+            decodeInfoResponse("DO", response);
             std::cout << std::endl;
             break;
         case AtlasScientificI2C::STATUS:
             syslog(LOG_NOTICE, "got DO probe status event: %s\n", response.c_str());
             std::cout << "DO ";
-            decodeStatusResponse(response);
+            decodeStatusResponse("DO", response);
             std::cout << std::endl;
             break;
         case AtlasScientificI2C::CALIBRATE:
@@ -190,7 +203,7 @@ void doCallback(int cmd, std::string response)
         case AtlasScientificI2C::SETTEMPCOMPREAD:
         case AtlasScientificI2C::GETTEMPCOMP:
             std::cout << "DO ";
-            decodeTempCompensation(response);
+            decodeTempCompensation("pH", response);
             std::cout << std::endl;
             break;
         default:

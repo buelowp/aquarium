@@ -75,6 +75,12 @@ public:
     std::string m_mqttPassword;
     std::string m_localId;
     std::string m_mcp3008Device;
+    std::string m_phVersion;
+    std::string m_phVoltage;
+    std::string m_phTempComp;
+    std::string m_o2Version;
+    std::string m_o2Voltage;
+    std::string m_o2TempComp;
     bool m_daemonize;
     bool m_aioConnected;
     bool m_mqttConnected;
