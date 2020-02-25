@@ -93,7 +93,7 @@ void initializeLeds()
 
 bool cisCompare(const std::string & str1, const std::string &str2)
 {
-	return ((str1.size() == str2.size()) && std::equal(str1.begin(), str1.end(), str2.begin(), 
+    return ((str1.size() == str2.size()) && std::equal(str1.begin(), str1.end(), str2.begin(), 
             [](const char c1, const char c2){ return (c1 == c2 || std::toupper(c1) == std::toupper(c2)); }
             ));
 }
@@ -318,6 +318,13 @@ void setTempCompensation()
     }
 }
 
+void sendTempProbeIdentification()
+{
+    nlohmann::json j;
+    
+    j["aquarium"]["device"]
+}
+
 void mainloop()
 {
     ITimer doUpdate;
@@ -369,34 +376,34 @@ void mainloop()
  */
 bool parse_args(int argc, char **argv)
 {
-	int opt;
-	bool rval = true;
+    int opt;
+    bool rval = true;
     std::string cf = "~/.config/aquarium.conf";
     
     Configuration::instance()->m_daemonize = false;
     
-	if (argv) {
-		while ((opt = getopt(argc, argv, "c:hd")) != -1) {
-			switch (opt) {
+    if (argv) {
+        while ((opt = getopt(argc, argv, "c:hd")) != -1) {
+            switch (opt) {
             case 'h':
                 usage(argv[0]);
                 return false;
                 break;
-			case 'c':
-				cf = optarg;
-				break;
-	        case 'd':
-	            Configuration::instance()->m_daemonize = true;
-	            break;
-	        default:
+            case 'c':
+            cf = optarg;
+                break;
+            case 'd':
+                Configuration::instance()->m_daemonize = true;
+                break;
+            default:
                 syslog(LOG_ERR, "Unexpected command line argument given");
-	            usage(argv[0]);
+                usage(argv[0]);
                 return false;
-			}
-		}
-	}
+            }
+        }
+    }
 
-	if (cf.size() > 0) {
+    if (cf.size() > 0) {
         if ((cf.find("$HOME") != std::string::npos) || (cf.at(0) == '~')) {
             const char* homeDir = getenv("HOME");
             if (cf.at(0) == '~') {
@@ -479,7 +486,11 @@ int main(int argc, char *argv[])
     GpioInterrupt::instance()->setPinCallback(Configuration::instance()->m_flowRatePin, flowRateCallback);
     
     if (Configuration::instance()->m_aioEnabled)
-        Configuration::instance()->m_aio = new AdafruitIO(Configuration::instance()->m_localId, Configuration::instance()->m_aioServer, Configuration::instance()->m_aioUserName, Configuration::instance()->m_aioKey, Configuration::instance()->m_aioPort);
+        Configuration::instance()->m_aio = new AdafruitIO(Configuration::instance()->m_localId, 
+                                                          Configuration::instance()->m_aioServer, 
+                                                          Configuration::instance()->m_aioUserName, 
+                                                          Configuration::instance()->m_aioKey, 
+                                                          Configuration::instance()->m_aioPort);
     
     GpioInterrupt::instance()->start();
     Configuration::instance()->m_oxygen->setCallback(doCallback);

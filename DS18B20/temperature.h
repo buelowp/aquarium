@@ -31,6 +31,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <map>
 #include <syslog.h>
 #include <sys/types.h>
 #include <dirent.h>
@@ -39,21 +40,25 @@ class Temperature
 {
 public:
     Temperature();
-    Temperature(std::string);
+    Temperature(std::string, std::string);
     ~Temperature();
     
-    void getTemperature(double&, double&);
-    double celsius();
-    double farenheit();
+    static double convertToFarenheit(double c)
+    {
+        return ((c / 1000) * 1.8) + 32;
+    }
+    
+    double getTemperatureByDevice(std::string device);
+    double getTemperatureByName(std::string name);
+    void getAllTemperatures(std::map<std::string, double> &devices);
     bool enabled() { return m_enabled; }
-    std::string name() { return m_name; }
-    std::string device() { return m_device; }
-    void setName(std::string name) { m_name = name; }
+    std::string name(std::string device) { return m_devices[device]; }
+    std::map<std::string, std::string> devices() { return m_devices; }
+    bool setNameForDevice(std::string name, std::string device);
     
 private:
-    std::string m_device;
-    std::string m_path;
-    std::string m_name;
+    double getTemperature(std::string device);
+    std::map<std::string, std::string> m_devices;
     bool m_enabled;
 };
 

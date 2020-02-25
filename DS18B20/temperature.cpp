@@ -39,26 +39,20 @@ Temperature::Temperature()
     
     for (int i = 0; i < v.size(); i++) {
         if (v.at(i).find("28-") != std::string::npos) {
-            m_device = v.at(i);
-            m_name = m_device;
-            break;
+            m_devices[v.at(i)] = v.at(i);
+            syslog(LOG_INFO, "Found 1-wire device %s", v.at(i).c_str());
+            std::cout << "Found 1-wire device " << v.at(i).c_str() << std::endl;
         }
     }
-    if (m_device.size() > 0) {
+    if (m_devices.size() > 0)
         m_enabled = true;
-    
-        m_path = "/sys/bus/w1/devices/" + m_device + "/w1_slave";
-        syslog(LOG_INFO, "Found 1-wire device %s", m_path.c_str());
-	std::cout << "Found 1-wire device " << m_name << " at " << m_device << std::endl;
-    }
     else
         syslog(LOG_ERR, "No 1-wire devices found");
 }
 
-Temperature::Temperature(std::string device) : m_device(device)
+Temperature::Temperature(std::string name, std::string device)
 {
-    m_path = "/sys/bus/w1/devices/" + m_device + "/w1_slave";
-    m_name = device;
+    m_devices[device] = name;
     m_enabled = true;
 }
 
@@ -66,33 +60,34 @@ Temperature::~Temperature()
 {
 }
 
-double Temperature::farenheit()
+double Temperature::getTemperatureByName(std::string name)
 {
-    double tc;
-    double tf;
+    auto it = m_devices.begin();
     
-    getTemperature(tc, tf);
-    return tf;
+    while (it != m_devices.end()) {
+        if (it->second == name)
+            return getTemperature(it->first);
+    }
+    return 0;
 }
 
-double Temperature::celsius()
+double Temperature::getTemperatureByDevice(std::string device)
 {
-    double tc;
-    double tf;
+    auto it = m_devices.find(device);
     
-    getTemperature(tc, tf);
-    return tc;
+    if (it != m_devices.end()) {
+        return getTemperature(device);
+    }
+    return 0;
 }
 
-void Temperature::getTemperature(double &tc, double &tf)
+double Temperature::getTemperature(std::string device)
 {
-    std::ifstream fs(m_path);
+    std::string path = "/sys/bus/w1/devices/" + device + "/w1_slave";
+    std::ifstream fs(path);
     std::stringstream contents;
     std::string data;
-    
-    tc = 0;
-    tf = 0;
-    
+        
     if (fs.is_open() && m_enabled) {
         contents << fs.rdbuf();
         int pos = contents.str().find("t=");
@@ -101,15 +96,25 @@ void Temperature::getTemperature(double &tc, double &tf)
         }
         try {
             double t = std::stof(data);
-            tc = t / 1000;
-            tf = (tc * 1.8) + 32;
+            return t;
         }
         catch (std::exception &e) {
             syslog(LOG_ERR, "Unable to decode %s, exception is %s\n", data.c_str(), e.what());
             std::cerr << "Unable to decode " << data << std::endl;
         }
     }
+    return 0;
 }
 
+bool Temperature::setNameForDevice(std::string name, std::string device)
+{
+    auto it = m_devices.find(device);
+    
+    if (it != m_devices.end()) {
+        m_devices[device] = name;
+        return true;
+    }
+    return false;
+}
 
 
