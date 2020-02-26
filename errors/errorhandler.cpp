@@ -38,8 +38,9 @@ unsigned int ErrorHandler::critical (unsigned int handle, std::string msg)
 {
     Critical err(handle, msg);
     
-    if (m_fatals.size() == 0)
+    if (m_fatals.size() == 0) {
         err.activate();
+    }
     
     m_criticals[handle] = err;
     m_storedErrors++;
@@ -60,8 +61,9 @@ unsigned int ErrorHandler::warning ( unsigned int handle, std::string msg )
 {
     Warning err(handle, msg);
     
-    if (m_fatals.size() == 0 && m_criticals.size() == 0)
+    if (m_fatals.size() == 0 && m_criticals.size() == 0) {
         err.activate();
+    }
     
     m_warnings[handle] = err;
     m_storedErrors++;

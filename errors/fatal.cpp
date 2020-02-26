@@ -59,6 +59,8 @@ void Fatal::cancel()
     j["aquarium"]["error"]["handle"] = m_handle;
     j["aquarium"]["error"]["timeout"] = m_timeout;
 
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 0);
+
     if (m_mqtt)
         m_mqtt->publish(NULL, "aquarium/error", j.dump().size(), j.dump().c_str());
 }
@@ -71,6 +73,8 @@ void Fatal::activate()
     j["aquarium"]["error"]["message"] = m_message;
     j["aquarium"]["error"]["handle"] = m_handle;
     j["aquarium"]["error"]["timeout"] = m_timeout;
+
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 1);
 
     if (m_mqtt)
         m_mqtt->publish(NULL, "aquarium/error", j.dump().size(), j.dump().c_str());
