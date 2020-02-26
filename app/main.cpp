@@ -475,11 +475,15 @@ bool parse_args(int argc, char **argv)
 bool testNetwork(std::string server)
 {
     int count = 0;
+    bool activeWarning = false;
     unsigned int handle;
     std::string ping = "ping" + server;
     
     while (system(ping.c_str())) {
-        handle = g_errors.warning(Configuration::instance()->nextHandle(), "No Network");
+        if (!activeWarning) {
+            handle = g_errors.warning(Configuration::instance()->nextHandle(), "No Network");
+            activeWarning = true;
+        }
         if (count++ == 300) {
             syslog(LOG_ERR, "Network is not coming up, giving up...");
             return false;

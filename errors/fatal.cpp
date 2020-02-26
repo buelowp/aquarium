@@ -61,8 +61,6 @@ void Fatal::cancel()
 
     if (m_mqtt)
         m_mqtt->publish(NULL, "aquarium/error", j.dump().size(), j.dump().c_str());
-    
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 0);
 }
 
 void Fatal::activate()
@@ -76,6 +74,4 @@ void Fatal::activate()
 
     if (m_mqtt)
         m_mqtt->publish(NULL, "aquarium/error", j.dump().size(), j.dump().c_str());
-    
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 1);
 }
