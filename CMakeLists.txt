@@ -1,6 +1,7 @@
 cmake_minimum_required (VERSION 3.0)
 
 add_subdirectory(timer)
+add_subdirectory(errors)
 add_subdirectory(atlas)
 add_subdirectory(DS18B20)
 add_subdirectory(mcp3008)

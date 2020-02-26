@@ -46,9 +46,10 @@
 #include "temperature.h"
 #include "mcp3008.h"
 #include "configuration.h"
-#include "fatalerror.h"
-#include "criticalerror.h"
-#include "warningerror.h"
+#include "errorhandler.h"
+#include "fatal.h"
+#include "critical.h"
+#include "warning.h"
 
 #define ONE_SECOND          1000
 #define TEN_SECONDS         (ONE_SECOND * 10)
@@ -62,6 +63,8 @@
 #define AIO_PH_FEED         "pbuelow/feeds/aquarium.ph"
 #define AIO_TEMP_FEED       "pbuelow/feeds/aquarium.Temperature"
 #define AIO_LEVEL_FEED      "pbuelow/feeds/aquarium.waterlevel"
+
+ErrorHandler g_errors;
 
 void eternalBlinkAndDie(int pin, int millihz)
 {
@@ -100,6 +103,7 @@ bool cisCompare(const std::string & str1, const std::string &str2)
 
 void decodeStatusResponse(std::string which, std::string &response)
 {
+    nlohmann::json j;
     int pos = response.find_last_of(",");
     double voltage;
     
@@ -110,10 +114,20 @@ void decodeStatusResponse(std::string which, std::string &response)
         }
         else 
             std::cout << "probe is reporting an unusual voltage (" << voltage << "), it may not be operating correctly.";
-        if (which == "pH")
+        if (which == "pH") {
+            if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqtt->isConnected()) {
+                j["aquarium"]["device"]["ph"]["voltage"] = response.substr(pos + 1);
+                Configuration::instance()->m_mqtt->publish(NULL, "aquarium/device", j.dump().size(), j.dump().c_str());
+            }
             Configuration::instance()->m_phVoltage = response.substr(pos + 1);
-        else if (which == "DO")
+        }
+        else if (which == "DO") {
+            if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqtt->isConnected()) {
+                j["aquarium"]["device"]["dissolvedoxygen"]["version"] = response.substr(pos + 1);
+                Configuration::instance()->m_mqtt->publish(NULL, "aquarium/device", j.dump().size(), j.dump().c_str());
+            }
             Configuration::instance()->m_o2Voltage = response.substr(pos + 1);
+        }
     }
     else {
         std::cout << "probe status cannot be decoded";
@@ -122,14 +136,25 @@ void decodeStatusResponse(std::string which, std::string &response)
 
 void decodeInfoResponse(std::string which, std::string &response)
 {
+    nlohmann::json j;
     int pos = response.find_last_of(",");
     
     if (pos != std::string::npos) {
         std::cout << "probe is running firmware version " << response.substr(pos + 1);
-        if (which == "pH")
+        if (which == "pH") {
+            if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqtt->isConnected()) {
+                j["aquarium"]["device"]["ph"]["version"] = response.substr(pos + 1);
+                Configuration::instance()->m_mqtt->publish(NULL, "aquarium/device", j.dump().size(), j.dump().c_str());
+            }
             Configuration::instance()->m_phVersion = response.substr(pos + 1);
-        else if (which == "DO")
+        }
+        else if (which == "DO") {
+            if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqtt->isConnected()) {
+                j["aquarium"]["device"]["dissolvedoxygen"]["version"] = response.substr(pos + 1);
+                Configuration::instance()->m_mqtt->publish(NULL, "aquarium/device", j.dump().size(), j.dump().c_str());
+            }
             Configuration::instance()->m_o2Version = response.substr(pos + 1);
+        }
     }
     else {
         std::cout << "probe info response cannot be decoded";
@@ -138,13 +163,25 @@ void decodeInfoResponse(std::string which, std::string &response)
 
 void decodeTempCompensation(std::string which, std::string &response)
 {
+    nlohmann::json j;
+
     int pos = response.find_last_of(",");
     if (pos != std::string::npos) {
         std::cout << "probe has a temp compensation value of " << response.substr(pos + 1) << "C";
-        if (which == "pH")
-            Configuration::instance()->m_phTempComp = response.substr(pos + 1);
-        else if (which == "DO")
+        if (which == "pH") {
+            if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqtt->isConnected()) {
+                j["aquarium"]["device"]["ph"]["tempcompensation"] = response.substr(pos + 1);
+                Configuration::instance()->m_mqtt->publish(NULL, "aquarium/device", j.dump().size(), j.dump().c_str());
+            }
             Configuration::instance()->m_o2TempComp = response.substr(pos + 1);
+        }
+        else if (which == "DO") {
+            if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqtt->isConnected()) {
+                j["aquarium"]["device"]["dissolvedoxygen"]["tempcompensation"] = response.substr(pos + 1);
+                Configuration::instance()->m_mqtt->publish(NULL, "aquarium/device", j.dump().size(), j.dump().c_str());
+            }
+            Configuration::instance()->m_o2TempComp = response.substr(pos + 1);
+        }
     }
     else {
         std::cout << "probe temp compensation response cannot be decoded: " << response;
@@ -261,11 +298,7 @@ void sendResultData()
 {
     nlohmann::json j;
     unsigned int result = 0;
-    double tc;
-    double tf;
     std::time_t t = std::time(nullptr);
-    std::map<std::string, double> readingsC;
-    std::map<std::string, double> readingsF;
     char timebuff[100];
 
     memset(timebuff, '\0', 100);
@@ -276,12 +309,12 @@ void sendResultData()
     j["aquarium"]["waterlevel"] = Configuration::instance()->m_adc->reading(Configuration::instance()->m_adcWaterLevelIndex);
     
     if (Configuration::instance()->m_temp->enabled()) {
-        std::map<std::string, double> readings;
-        Configuration::instance()->m_temp->getAllTemperatures(readings);
-        auto it = readings.begin();
-        while (it != readings.end()) {
-            j["aquarium"]["temperature"][it->first]["celsius"] = it->second;
-            j["aquarium"]["temperature"][it->first]["farenheit"] = Configuration::instance()->m_temp->convertToFarenheit(it->second);
+        std::map<std::string, std::string> devices = Configuration::instance()->m_temp->devices();
+        auto it = devices.begin();
+        while (it != devices.end()) {
+            double c = Configuration::instance()->m_temp->getTemperatureByDevice(it->first);
+            j["aquarium"]["temperature"][it->first]["celsius"] = c;
+            j["aquarium"]["temperature"][it->first]["farenheit"] = Configuration::instance()->m_temp->convertToFarenheit(c);
         }
     }
 /*
@@ -310,22 +343,36 @@ void sendAIOData()
 
 void setTempCompensation()
 {
-    double tc = Configuration::instance()->m_temp->celsiusReadingByIndex(0);
+    std::map<std::string, std::string> devices = Configuration::instance()->m_temp->devices();
+    double c;
 
-    std::cout << "Setting temp compensation value for probes to " << tc << std::endl;
-    if (tc != 0) {
-        Configuration::instance()->m_ph->setTempCompensation(tc);
-        Configuration::instance()->m_oxygen->setTempCompensation(tc);
-        Configuration::instance()->m_ph->getTempCompensation();
-        Configuration::instance()->m_oxygen->getTempCompensation();
+    auto it = devices.begin();
+
+    if (it != devices.end()) {
+        c = Configuration::instance()->m_temp->getTemperatureByDevice(it->first);
+
+        std::cout << "Setting temp compensation value for probes to " << c << std::endl;
+        if (c != 0) {
+            Configuration::instance()->m_ph->setTempCompensation(c);
+            Configuration::instance()->m_oxygen->setTempCompensation(c);
+            Configuration::instance()->m_ph->getTempCompensation();
+            Configuration::instance()->m_oxygen->getTempCompensation();
+        }
     }
 }
 
 void sendTempProbeIdentification()
 {
+    std::map<std::string, std::string> devices = Configuration::instance()->m_temp->devices();
     nlohmann::json j;
+
+    auto it = devices.begin();
     
-    j["aquarium"]["device"]
+    while (it != devices.end()) {
+        j["aquarium"]["device"]["ds18b20"]["name"] = it->second;
+        j["aquarium"]["device"]["ds18b20"]["device"] = it->first;
+    }
+    Configuration::instance()->m_mqtt->publish(NULL, "aquarium/devices", j.dump().size(), j.dump().c_str());
 }
 
 void mainloop()
@@ -432,7 +479,7 @@ bool testNetwork(std::string server)
     std::string ping = "ping" + server;
     
     while (system(ping.c_str())) {
-        handle = Configuration::instance()->m_errors.warning(Configuration::instance()->nextHandle(), "No Network");
+        handle = g_errors.warning(Configuration::instance()->nextHandle(), "No Network");
         if (count++ == 300) {
             syslog(LOG_ERR, "Network is not coming up, giving up...");
             return false;
@@ -440,7 +487,7 @@ bool testNetwork(std::string server)
         syslog(LOG_ERR, "Network does not seem to be available, pending...");
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
-    Configuration::instance()->m_errors.clearWarning(handle);
+    g_errors.clearWarning(handle);
     return true;
 }
 
@@ -480,7 +527,7 @@ int main(int argc, char *argv[])
     // We will assume that if we can get to our local MQTT instance, we can probably get to AdafruitIO as well
     if (!testNetwork(Configuration::instance()->m_mqttServer)) {
         syslog(LOG_ERR, "Cannot get to server %s, so we cannot continue", Configuration::instance()->m_mqttServer.c_str());
-        Configuration::instance()->m_errors.fatal(0, "Network Not Available");
+        g_errors.fatal(0, "Network Not Available");
         std::this_thread::sleep_for(std::chrono::seconds(1));
         exit(-3);
     }

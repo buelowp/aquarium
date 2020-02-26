@@ -28,6 +28,9 @@
 
 #include <vector>
 
+#include <gpiointerruptpp.h>
+
+#include "configuration.h"
 #include "warning.h"
 #include "critical.h"
 #include "fatal.h"

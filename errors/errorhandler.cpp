@@ -36,7 +36,7 @@ ErrorHandler::~ErrorHandler()
 
 unsigned int ErrorHandler::critical (unsigned int handle, std::string msg)
 {
-    CriticalError err(handle, msg);
+    Critical err(handle, msg);
     
     if (m_fatals.size() == 0)
         err.activate();
@@ -48,7 +48,7 @@ unsigned int ErrorHandler::critical (unsigned int handle, std::string msg)
 
 unsigned int ErrorHandler::fatal ( unsigned int handle, std::string msg )
 {
-    FatalError err(handle, msg);
+    Fatal err(handle, msg);
     err.activate();
     
     m_fatals[handle] = err;
@@ -58,7 +58,7 @@ unsigned int ErrorHandler::fatal ( unsigned int handle, std::string msg )
 
 unsigned int ErrorHandler::warning ( unsigned int handle, std::string msg )
 {
-    WarningError err(handle, msg);
+    Warning err(handle, msg);
     
     if (m_fatals.size() == 0 && m_criticals.size() == 0)
         err.activate();
@@ -72,7 +72,7 @@ void ErrorHandler::clearCritical ( unsigned int handle )
 {
     auto search = m_criticals.find(handle);
     if (search != m_criticals.end()) {
-        CriticalError err = search->second;
+        Critical err = search->second;
         err.cancel();
         m_criticals.erase(search);
         m_storedErrors--;
@@ -81,13 +81,13 @@ void ErrorHandler::clearCritical ( unsigned int handle )
     if (m_criticals.size() == 0) {
         if (m_warnings.size()) {
             auto it = m_warnings.begin();
-            WarningError err = it->second;
+            Warning err = it->second;
             err.activate();
         }
     }
     else {
         auto it = m_criticals.begin();
-        CriticalError err = it->second;
+        Critical err = it->second;
         err.activate();
     }
     if (m_storedErrors == 0) {
@@ -99,7 +99,7 @@ void ErrorHandler::clearFatal ( unsigned int handle )
 {
     auto search = m_fatals.find(handle);
     if (search != m_fatals.end()) {
-        FatalError err = search->second;
+        Fatal err = search->second;
         err.cancel();
         m_fatals.erase(search);
         m_storedErrors--;
@@ -108,18 +108,18 @@ void ErrorHandler::clearFatal ( unsigned int handle )
     if (m_fatals.size() == 0) {
         if (m_criticals.size()) {
             auto it = m_criticals.begin();
-            CriticalError err = it->second;
+            Critical err = it->second;
             err.activate();
         }
         else if (m_warnings.size()) {
             auto it = m_warnings.begin();
-            WarningError err = it->second;
+            Warning err = it->second;
             err.activate();
         }
     }
     else {
         auto it = m_fatals.begin();
-        FatalError err = it->second;
+        Fatal err = it->second;
         err.activate();
     }
     if (m_storedErrors == 0) {
@@ -131,7 +131,7 @@ void ErrorHandler::clearWarning ( unsigned int handle )
 {
     auto search = m_warnings.find(handle);
     if (search != m_warnings.end()) {
-        WarningError err = search->second;
+        Warning err = search->second;
         err.cancel();
         m_warnings.erase(search);
     }

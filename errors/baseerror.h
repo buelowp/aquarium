@@ -29,6 +29,10 @@
 #include <string>
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include <gpiointerruptpp.h>
+
+#include "mqttclient.h"
+#include "configuration.h"
 
 /**
  * \class BaseError
@@ -44,10 +48,6 @@
  * Errors are pushed into the queue by the priority level with
  * warning being the lowest priority.
  */
-
-#include <nlohmann/json.hpp>
-#include "mqttclient.h"
-
 class BaseError
 {
 public:

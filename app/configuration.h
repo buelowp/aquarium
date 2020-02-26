@@ -40,7 +40,6 @@
 #include "itimer.h"
 #include "temperature.h"
 #include "mcp3008.h"
-#include "errorhandler.h"
 
 class Configuration
 {
@@ -66,7 +65,6 @@ public:
     Temperature *m_temp;
     FlowRate *m_fr;
     MCP3008 *m_adc;
-    ErrorHandler m_errors;
     std::string m_aioServer;
     std::string m_aioUserName;
     std::string m_aioKey;
@@ -100,7 +98,7 @@ public:
 private:
     Configuration();
     ~Configuration();
-    Configuration& operator=(Configuration const&) {};
+    Configuration& operator=(Configuration const&) {return *this;}
     Configuration(Configuration&);
     
     void generateLocalId();
