@@ -42,6 +42,7 @@ unsigned int ErrorHandler::critical (unsigned int handle, std::string msg)
         err.activate();
     }
     
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_green_led, 0);
     m_criticals[handle] = err;
     m_storedErrors++;
     return handle;
@@ -52,6 +53,7 @@ unsigned int ErrorHandler::fatal ( unsigned int handle, std::string msg )
     Fatal err(handle, msg);
     err.activate();
     
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_green_led, 0);
     m_fatals[handle] = err;
     m_storedErrors++;
     return handle;
@@ -65,6 +67,7 @@ unsigned int ErrorHandler::warning ( unsigned int handle, std::string msg )
         err.activate();
     }
     
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_green_led, 0);
     m_warnings[handle] = err;
     m_storedErrors++;
     return handle;
