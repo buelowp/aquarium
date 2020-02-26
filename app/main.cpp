@@ -477,7 +477,7 @@ bool testNetwork(std::string server)
     int count = 0;
     bool activeWarning = false;
     unsigned int handle;
-    std::string ping = "ping" + server;
+    std::string ping = "ping -c 1 " + server;
     
     while (system(ping.c_str())) {
         if (!activeWarning) {
@@ -489,6 +489,22 @@ bool testNetwork(std::string server)
             return false;
         }
         syslog(LOG_ERR, "Network does not seem to be available, pending...");
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    g_errors.clearWarning(handle);
+    activeWarning = false;
+    if (Configuration::instance()->m_mqtt) {
+        while (!Configuration::instance()->m_mqtt->isConnected()) {
+            if (!activeWarning) {
+                handle = g_errors.warning(Configuration::instance()->nextHandle(), "No Network");
+                activeWarning = true;
+            }
+        }
+        if (count++ == 300) {
+            syslog(LOG_ERR, "Network is not coming up, giving up...");
+            return false;
+        }
+        syslog(LOG_ERR, "MQTT server does not seem to be available, pending...");
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
     g_errors.clearWarning(handle);
