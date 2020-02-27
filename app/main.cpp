@@ -315,13 +315,15 @@ void sendResultData()
             double c = Configuration::instance()->m_temp->getTemperatureByDevice(it->first);
             j["aquarium"]["temperature"][it->first]["celsius"] = c;
             j["aquarium"]["temperature"][it->first]["farenheit"] = Configuration::instance()->m_temp->convertToFarenheit(c);
+            it++;
         }
     }
-/*
-    j["aquarium"]["flowrate"]["gpm"] = Configuration::instance()->m_fr->gpm();
-    j["aquarium"]["flowrate"]["lpm"] = Configuration::instance()->m_fr->lpm();
-    j["aquarium"]["flowrate"]["hertz"] = Configuration::instance()->m_fr->hertz();
-*/
+
+    if (Configuration::instance()->m_frEnabled) {
+        j["aquarium"]["flowrate"]["gpm"] = Configuration::instance()->m_fr->gpm();
+        j["aquarium"]["flowrate"]["lpm"] = Configuration::instance()->m_fr->lpm();
+        j["aquarium"]["flowrate"]["hertz"] = Configuration::instance()->m_fr->hertz();
+    }
     j["aquarium"]["ph"] = Configuration::instance()->m_ph->getPH();
     j["aquarium"]["oxygen"] = Configuration::instance()->m_oxygen->getDO();
     if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqtt->isConnected()) {

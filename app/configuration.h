@@ -84,6 +84,7 @@ public:
     bool m_mqttConnected;
     bool m_aioEnabled;
     bool m_mqttEnabled;
+    int m_frEnabled;
     int m_o2sensor_address;
     int m_phsensor_address;
     int m_onewirepin;
