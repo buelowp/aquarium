@@ -123,7 +123,7 @@ void decodeStatusResponse(std::string which, std::string &response)
         }
         else if (which == "DO") {
             if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqtt->isConnected()) {
-                j["aquarium"]["device"]["dissolvedoxygen"]["version"] = response.substr(pos + 1);
+                j["aquarium"]["device"]["dissolvedoxygen"]["voltage"] = response.substr(pos + 1);
                 Configuration::instance()->m_mqtt->publish(NULL, "aquarium/device", j.dump().size(), j.dump().c_str());
             }
             Configuration::instance()->m_o2Voltage = response.substr(pos + 1);
@@ -240,7 +240,7 @@ void doCallback(int cmd, std::string response)
         case AtlasScientificI2C::SETTEMPCOMPREAD:
         case AtlasScientificI2C::GETTEMPCOMP:
             std::cout << "DO ";
-            decodeTempCompensation("pH", response);
+            decodeTempCompensation("DO", response);
             std::cout << std::endl;
             break;
         default:
@@ -335,14 +335,6 @@ void sendResultData()
     }
 }
 
-void sendConfigData()
-{
-}
-
-void sendAIOData()
-{
-}
-
 void setTempCompensation()
 {
     std::map<std::string, std::string> devices = Configuration::instance()->m_temp->devices();
@@ -360,6 +352,7 @@ void setTempCompensation()
             Configuration::instance()->m_ph->getTempCompensation();
             Configuration::instance()->m_oxygen->getTempCompensation();
         }
+        it++;
     }
 }
 
@@ -370,7 +363,7 @@ void sendTempProbeIdentification()
 
     auto it = devices.begin();
     
-    while (it != devices.end()) {
+    while (it++ != devices.end()) {
         j["aquarium"]["device"]["ds18b20"]["name"] = it->second;
         j["aquarium"]["device"]["ds18b20"]["device"] = it->first;
     }
@@ -383,19 +376,16 @@ void mainloop()
     ITimer phUpdate;
     ITimer sendUpdate;
     ITimer tempCompensation;
-    ITimer aioUpdate;
     
     auto phfunc = []() { Configuration::instance()->m_ph->sendReadCommand(900); };
     auto dofunc = []() { Configuration::instance()->m_oxygen->sendReadCommand(600); };
     auto updateFunc = []() { sendResultData(); };
     auto compFunc = []() { setTempCompensation(); };
-    auto aioFunc = []() { sendAIOData(); };
     
     doUpdate.setInterval(dofunc, TEN_SECONDS);
     phUpdate.setInterval(phfunc, TEN_SECONDS);
     sendUpdate.setInterval(updateFunc, ONE_MINUTE);
     tempCompensation.setInterval(compFunc, ONE_HOUR);
-    aioUpdate.setInterval(aioFunc, FIVE_MINUTES);
     
     setTempCompensation();
     
@@ -479,22 +469,7 @@ bool testNetwork(std::string server)
     int count = 0;
     bool activeWarning = false;
     unsigned int handle;
-    std::string ping = "ping -c 1 " + server;
     
-    while (system(ping.c_str())) {
-        if (!activeWarning) {
-            handle = g_errors.warning(Configuration::instance()->nextHandle(), "No Network");
-            activeWarning = true;
-        }
-        if (count++ == 300) {
-            syslog(LOG_ERR, "Network is not coming up, giving up...");
-            return false;
-        }
-        syslog(LOG_ERR, "Network does not seem to be available, pending...");
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-    g_errors.clearWarning(handle);
-    activeWarning = false;
     if (Configuration::instance()->m_mqtt) {
         while (!Configuration::instance()->m_mqtt->isConnected()) {
             if (!activeWarning) {
@@ -578,7 +553,7 @@ int main(int argc, char *argv[])
     Configuration::instance()->m_ph->getTempCompensation();
     Configuration::instance()->m_ph->sendStatusCommand();
     
-    sendConfigData();
+    sendTempProbeIdentification();
     
     mainloop();
     

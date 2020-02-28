@@ -82,6 +82,7 @@ void PotentialHydrogen::response(int cmd, uint8_t *buffer, int size)
     }
     catch (const std::bad_function_call& e) {
         syslog(LOG_ERR, "%s:%d: exception executing callback function: %s\n", __FUNCTION__, __LINE__, e.what());
+        fprintf(stderr, "%s:%d: exception executing callback function: %s\n", __FUNCTION__, __LINE__, e.what());
     }
 }
 
@@ -287,6 +288,7 @@ void PotentialHydrogen::handleCalibration(std::string response)
             }
             catch (std::exception &e) {
                 syslog(LOG_ERR, "%s:%d: Calibration query returned a non number: %s", __FUNCTION__, __LINE__, response.c_str());
+                fprintf(stderr, "%s:%d: Calibration query returned a non number: %s", __FUNCTION__, __LINE__, response.c_str());
             }
             syslog(LOG_INFO, "%s:%d: Device has %d point calibration", __FUNCTION__, __LINE__, m_calibration);
         }
@@ -310,6 +312,7 @@ void PotentialHydrogen::handleStatusResponse(std::string response)
             }
             catch (std::exception &e) {
                 syslog(LOG_ERR, "%s:%d: Status query returned a non number: %s", __FUNCTION__, __LINE__, response.c_str());                
+                fprintf(stderr, "%s:%d: Status query returned a non number: %s", __FUNCTION__, __LINE__, response.c_str());                
             }
         }
         else {
@@ -332,6 +335,6 @@ void PotentialHydrogen::handleReadResponse(std::string &response)
         m_lastPHValue = std::stod(response);
     }
     catch (std::exception &e) {
-        std::cerr << "Unable to decode response: " << response << std::endl;
+        std::cerr << __FUNCTION__ << "Unable to decode response: " << response << std::endl;
     }
 }

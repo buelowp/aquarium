@@ -96,11 +96,11 @@ double Temperature::getTemperature(std::string device)
         }
         try {
             double t = std::stof(data);
-            return t;
+            return (t / 1000);
         }
         catch (std::exception &e) {
             syslog(LOG_ERR, "Unable to decode %s, exception is %s\n", data.c_str(), e.what());
-            std::cerr << "Unable to decode " << data << std::endl;
+            std::cerr << __FUNCTION__ << "Unable to decode " << data << std::endl;
         }
     }
     return 0;
