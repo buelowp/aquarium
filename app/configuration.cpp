@@ -28,6 +28,7 @@
 Configuration::Configuration()
 {
     m_handle = 1;
+    m_frEnabled = 0;
 }
 
 Configuration::~Configuration()
@@ -194,7 +195,9 @@ bool Configuration::readConfigFile()
         m_flowRatePin = frpin;
     else
         m_flowRatePin = 19;
-        
+
+    config_lookup_bool(&config, "flowrate_enable", &m_frEnabled);
+
     syslog(LOG_INFO, "Monitoring flowrate on pin %d", m_flowRatePin);
     fprintf(stderr, "Monitoring flowrate on pin %d\n", m_flowRatePin);
 
@@ -244,7 +247,6 @@ bool Configuration::readConfigFile()
 void Configuration::generateLocalId()
 {
 	std::ifstream ifs;
-	int pos;
 
 	ifs.open("/proc/sys/kernel/hostname");
 	if (!ifs) {
