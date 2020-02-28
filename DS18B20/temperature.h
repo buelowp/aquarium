@@ -45,7 +45,7 @@ public:
     
     double convertToFarenheit(double c)
     {
-        return ((c / 1000) * 1.8) + 32;
+        return ((c * 1.8) + 32);
     }
     
     double getTemperatureByDevice(std::string device);

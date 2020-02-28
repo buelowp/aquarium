@@ -363,9 +363,10 @@ void sendTempProbeIdentification()
 
     auto it = devices.begin();
     
-    while (it++ != devices.end()) {
+    while (it != devices.end()) {
         j["aquarium"]["device"]["ds18b20"]["name"] = it->second;
         j["aquarium"]["device"]["ds18b20"]["device"] = it->first;
+        it++;
     }
     Configuration::instance()->m_mqtt->publish(NULL, "aquarium/devices", j.dump().size(), j.dump().c_str());
 }
