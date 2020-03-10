@@ -23,27 +23,27 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "mcp3008.h"
+#ifndef LOCALCLIENTACTIONLISTENER_H
+#define LOCALCLIENTACTIONLISTENER_H
 
-MCP3008::MCP3008(int device)
+#include <string>
+#include <iostream>
+#include <mqtt/iaction_listener.h>
+#include <mqtt/token.h>
+
+/**
+ * @todo write docs
+ */
+class LocalClientActionListener : public virtual mqtt::iaction_listener
 {
-    m_enabled = false;
-    if (wiringPiSetup() == -1)
-        m_enabled = false;
+public:
+    LocalClientActionListener(const std::string& name) : m_name(name) {}
 
-    mcp3004Setup(200, device); // 3004 and 3008 are the same 4/8 channels
-    m_enabled = true;
-}
+private:
+    virtual void on_success(const mqtt::token& asyncActionToken) override;
+    virtual void on_failure(const mqtt::token& asyncActionToken) override;
 
-MCP3008::~MCP3008()
-{
-}
+    std::string m_name;
+};
 
-int MCP3008::reading(int channel)
-{
-    if (m_enabled)
-        return analogRead(200 + channel);
-
-    return 0;
-}
-
+#endif // LOCALCLIENTACTIONLISTENER_H

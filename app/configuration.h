@@ -28,14 +28,18 @@
 
 #include <string>
 #include <iostream>
+#include <memory>
+#include <functional>
 
 #include <libconfig.h>
 #include <syslog.h>
 
 #include <adaio.h>
+#include <mqtt/async_client.h>
+
 #include "potentialhydrogen.h"
 #include "dissolvedoxygen.h"
-#include "mqttclient.h"
+#include "localmqttcallback.h"
 #include "flowrate.h"
 #include "itimer.h"
 #include "temperature.h"
@@ -59,7 +63,8 @@ public:
     unsigned int nextHandle() { return m_handle++; }
     
     AdafruitIO *m_aio;
-    MQTTClient *m_mqtt;
+    mqtt::connect_options m_mqttConnectionOptions;
+    mqtt::async_client *m_mqtt;
     DissolvedOxygen *m_oxygen;
     PotentialHydrogen *m_ph;
     Temperature *m_temp;

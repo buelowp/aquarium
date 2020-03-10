@@ -37,10 +37,10 @@
 #include <libgen.h>
 #include <errno.h>
 #include <nlohmann/json.hpp>
+#include <mqtt/async_client.h>
 
 #include "potentialhydrogen.h"
 #include "dissolvedoxygen.h"
-#include "mqttclient.h"
 #include "flowrate.h"
 #include "itimer.h"
 #include "temperature.h"
@@ -50,6 +50,7 @@
 #include "fatal.h"
 #include "critical.h"
 #include "warning.h"
+#include "localmqttcallback.h"
 
 #define ONE_SECOND          1000
 #define TEN_SECONDS         (ONE_SECOND * 10)
@@ -366,6 +367,7 @@ void setTempCompensation()
 void sendTempProbeIdentification()
 {
     std::map<std::string, std::string> devices = Configuration::instance()->m_temp->devices();
+    mqtt::message_ptr pubmsg;
     nlohmann::json j;
 
     auto it = devices.begin();
@@ -374,7 +376,20 @@ void sendTempProbeIdentification()
         j["aquarium"]["device"]["ds18b20"]["name"] = it->second;
         j["aquarium"]["device"]["ds18b20"]["device"] = it->first;
     }
+    pubmsg = = mqtt::make_message(j.dump());
     Configuration::instance()->m_mqtt->publish(NULL, "aquarium/devices", j.dump().size(), j.dump().c_str());
+}
+
+void mqttIncomingMessage(std::string topic, std::string message)
+{
+}
+
+void mqttConnectionLost()
+{
+}
+
+void mqttConnected()
+{
 }
 
 void mainloop()
@@ -400,12 +415,6 @@ void mainloop()
     setTempCompensation();
     
     while (1) {
-        if (Configuration::instance()->m_aioEnabled && Configuration::instance()->m_aioConnected)
-            Configuration::instance()->m_aio->loop();
-        
-        if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqttConnected)
-            Configuration::instance()->m_mqtt->loop();
-        
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
     
@@ -529,6 +538,27 @@ int main(int argc, char *argv[])
         syslog(LOG_ERR, "Unable to open GPIO for red led");
 
     initializeLeds();
+
+    mqtt::connect_options connopts;
+    connopts.set_keep_alive_interval(20);
+	connopts.set_clean_session(true);
+
+    mqtt::async_client mqtt(Configuration::instance()->m_mqttServer, Configuration::instance()->m_localId);
+    LocalMQTTCallback callback(mqtt, connopts);
+    callback.setMessageCallback(mqttIncomingMessage);
+    callback.setConnectionLostCallback(mqttConnectionLost);
+    callback.setConnectedCallback(mqttConnected);
+    mqtt.set_callback(callback);
+    Configuration::instance()->m_mqtt = &mqtt;
+
+    try {
+		std::cout << "Connecting to the MQTT server..." << std::flush;
+		mqtt.connect(connopts, nullptr, callback);
+	}
+	catch (const mqtt::exception&) {
+		std::cerr << "\nERROR: Unable to connect to MQTT server: '" << Configuration::instance()->m_mqttServer << "'" << std::endl;
+		exit(-3);
+	}
 
     // We will assume that if we can get to our local MQTT instance, we can probably get to AdafruitIO as well
     if (!testNetwork(Configuration::instance()->m_mqttServer)) {

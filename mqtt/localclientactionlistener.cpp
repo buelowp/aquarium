@@ -23,27 +23,27 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "mcp3008.h"
+#include "localclientactionlistener.h"
 
-MCP3008::MCP3008(int device)
+void LocalClientActionListener::on_success(const mqtt::token &asyncActionToken)
 {
-    m_enabled = false;
-    if (wiringPiSetup() == -1)
-        m_enabled = false;
-
-    mcp3004Setup(200, device); // 3004 and 3008 are the same 4/8 channels
-    m_enabled = true;
+    std::cout << m_name << " failure";
+	if (asyncActionToken.get_message_id() != 0)
+        std::cout << " for token: [" << asyncActionToken.get_message_id() << "]" << std::endl;
+    
+    std::cout << std::endl;
 }
 
-MCP3008::~MCP3008()
+void LocalClientActionListener::on_failure(const mqtt::token &asyncActionToken)
 {
+    std::cout << m_name << " success";
+    if (asyncActionToken.get_message_id() != 0)
+        std::cout << " for token: [" << asyncActionToken.get_message_id() << "]" << std::endl;
+    
+    auto top = asyncActionToken.get_topics();
+    
+    if (top && !top->empty())
+        std::cout << "\ttoken topic: '" << (*top)[0] << "', ..." << std::endl;
+    
+    std::cout << std::endl;
 }
-
-int MCP3008::reading(int channel)
-{
-    if (m_enabled)
-        return analogRead(200 + channel);
-
-    return 0;
-}
-

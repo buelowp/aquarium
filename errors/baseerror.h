@@ -31,7 +31,7 @@
 #include <nlohmann/json.hpp>
 #include <gpiointerruptpp.h>
 
-#include "mqttclient.h"
+#include <mqtt/async_client.h>
 #include "configuration.h"
 
 /**
@@ -58,20 +58,20 @@ public:
     } Priority;
     
     BaseError();
-    BaseError(unsigned int handle, std::string msg, MQTTClient *client = nullptr, unsigned int timeout = 0);
+    BaseError(unsigned int handle, std::string msg, mqtt::async_client *client = nullptr, unsigned int timeout = 0);
     ~BaseError();
 
     Priority priority() const { return m_priority; }
     unsigned int handle() const { return m_handle; }
     std::string message() const { return m_message; }
     unsigned int timeout() const { return m_timeout; }
-    MQTTClient* client() const { return m_mqtt; }
+    mqtt::async_client* client() const { return m_mqtt; }
     
     virtual void cancel() = 0;
     virtual void activate() = 0;
     
 protected:
-    MQTTClient *m_mqtt;
+    mqtt::async_client *m_mqtt;
     Priority m_priority;
     std::string m_message;
     unsigned int m_timeout;
