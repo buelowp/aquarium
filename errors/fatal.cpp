@@ -41,7 +41,7 @@ Fatal::Fatal(const Fatal& fe)
     m_mqtt = fe.client();
 }
 
-Fatal::Fatal(unsigned int handle, std::string msg, MQTTClient *client , unsigned int timeout) : BaseError(handle, msg, client, timeout)
+Fatal::Fatal(unsigned int handle, std::string msg, mqtt::async_client *client , unsigned int timeout) : BaseError(handle, msg, client, timeout)
 {
     m_priority = BaseError::Priority::FATAL;
 }
@@ -52,6 +52,7 @@ Fatal::~Fatal()
 
 void Fatal::cancel()
 {
+    mqtt::message_ptr pubmsg;
     nlohmann::json j;
     
     j["aquarium"]["error"]["type"] = "fatal";
@@ -61,12 +62,13 @@ void Fatal::cancel()
 
     GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 0);
 
-    if (m_mqtt)
-        m_mqtt->publish(NULL, "aquarium/error", j.dump().size(), j.dump().c_str());
+    pubmsg = mqtt::make_message("aquarium/error", j.dump());
+    Configuration::instance()->m_mqtt->publish(pubmsg);
 }
 
 void Fatal::activate()
 {
+    mqtt::message_ptr pubmsg;
     nlohmann::json j;
     
     j["aquarium"]["error"]["type"] = "fatal";
@@ -76,6 +78,6 @@ void Fatal::activate()
 
     GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 1);
 
-    if (m_mqtt)
-        m_mqtt->publish(NULL, "aquarium/error", j.dump().size(), j.dump().c_str());
+    pubmsg = mqtt::make_message("aquarium/error", j.dump());
+    Configuration::instance()->m_mqtt->publish(pubmsg);
 }

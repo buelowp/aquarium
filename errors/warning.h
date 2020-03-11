@@ -26,13 +26,14 @@
 #ifndef WARNINGERROR_H
 #define WARNINGERROR_H
 
+#include <mqtt/async_client.h>
 #include "baseerror.h"
 
 class Warning : public BaseError
 {
 public:
     Warning();
-    Warning(unsigned int handle, std::string msg, MQTTClient *client = nullptr, unsigned int timeout = 0);
+    Warning(unsigned int handle, std::string msg, mqtt::async_client *client = nullptr, unsigned int timeout = 0);
     Warning(const Warning &we);
     ~Warning();
     

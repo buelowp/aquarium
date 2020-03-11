@@ -26,8 +26,8 @@
 #ifndef CRITICALERROR_H
 #define CRITICALERROR_H
 
+#include <mqtt/async_client.h>
 #include "baseerror.h"
-#include "mqttclient.h"
 
 /**
  * @todo write docs
@@ -36,7 +36,7 @@ class Critical : public BaseError
 {
 public:
     Critical();
-    Critical(unsigned int handle, std::string msg, MQTTClient *client = nullptr, unsigned int timeout = 0);
+    Critical(unsigned int handle, std::string msg, mqtt::async_client *client = nullptr, unsigned int timeout = 0);
     Critical(const Critical &ce);
     ~Critical();
     

@@ -55,10 +55,6 @@ private:
     // TODO: Fix the exit(1) here, it's a little barbaric
 	void on_failure(const mqtt::token& tok) override {
 		std::cout << "Connection attempt failed" << std::endl;
-		if (++m_retries > 5)
-			exit(1);
-        
-		reconnect();
 	}
 
 	// (Re)connection success
