@@ -139,6 +139,7 @@ void ErrorHandler::clearWarning ( unsigned int handle )
         Warning err = search->second;
         err.cancel();
         m_warnings.erase(search);
+        m_storedErrors--;
     }
     if (m_storedErrors == 0) {
         GpioInterrupt::instance()->setValue(Configuration::instance()->m_green_led, 1);

@@ -249,7 +249,7 @@ void doCallback(int cmd, std::string response)
         case AtlasScientificI2C::SETTEMPCOMPREAD:
         case AtlasScientificI2C::GETTEMPCOMP:
             std::cout << "DO ";
-            decodeTempCompensation("pH", response);
+            decodeTempCompensation("DO", response);
             std::cout << std::endl;
             break;
         default:
@@ -304,14 +304,6 @@ void sendResultData()
     Configuration::instance()->m_mqtt->publish(pubmsg);
 }
 
-void sendConfigData()
-{
-}
-
-void sendAIOData()
-{
-}
-
 void setTempCompensation()
 {
     std::map<std::string, std::string> devices = Configuration::instance()->m_temp->devices();
@@ -329,6 +321,7 @@ void setTempCompensation()
             Configuration::instance()->m_ph->getTempCompensation();
             Configuration::instance()->m_oxygen->getTempCompensation();
         }
+        it++;
     }
 }
 
@@ -343,6 +336,7 @@ void sendTempProbeIdentification()
     while (it != devices.end()) {
         j["aquarium"]["device"]["ds18b20"]["name"] = it->second;
         j["aquarium"]["device"]["ds18b20"]["device"] = it->first;
+        it++;
     }
     pubmsg = mqtt::make_message("aquarium/devices", j.dump());
     Configuration::instance()->m_mqtt->publish(pubmsg);
@@ -366,19 +360,16 @@ void mainloop()
     ITimer phUpdate;
     ITimer sendUpdate;
     ITimer tempCompensation;
-    ITimer aioUpdate;
     
     auto phfunc = []() { Configuration::instance()->m_ph->sendReadCommand(900); };
     auto dofunc = []() { Configuration::instance()->m_oxygen->sendReadCommand(600); };
     auto updateFunc = []() { sendResultData(); };
     auto compFunc = []() { setTempCompensation(); };
-    auto aioFunc = []() { sendAIOData(); };
     
     doUpdate.setInterval(dofunc, TEN_SECONDS);
     phUpdate.setInterval(phfunc, TEN_SECONDS);
     sendUpdate.setInterval(updateFunc, ONE_MINUTE);
     tempCompensation.setInterval(compFunc, ONE_HOUR);
-    aioUpdate.setInterval(aioFunc, FIVE_MINUTES);
     
     setTempCompensation();
     
@@ -572,7 +563,7 @@ int main(int argc, char *argv[])
     Configuration::instance()->m_ph->getTempCompensation();
     Configuration::instance()->m_ph->sendStatusCommand();
     
-    sendConfigData();
+    sendTempProbeIdentification();
     
     mainloop();
     
