@@ -398,7 +398,7 @@ bool testNetwork(std::string server)
     int count = 0;
     bool activeWarning = false;
     unsigned int handle;
-    std::string ping = "ping" + server;
+    std::string ping = "ping " + server;
     
     while (system(ping.c_str())) {
         if (!activeWarning) {
@@ -539,6 +539,7 @@ int main(int argc, char *argv[])
 		exit(-3);
 	}
 
+/*
     // We will assume that if we can get to our local MQTT instance, we can probably get to AdafruitIO as well
     if (!testNetwork(Configuration::instance()->m_mqttServer)) {
         syslog(LOG_ERR, "Cannot get to server %s, so we cannot continue", Configuration::instance()->m_mqttServer.c_str());
@@ -546,7 +547,7 @@ int main(int argc, char *argv[])
         std::this_thread::sleep_for(std::chrono::seconds(1));
         exit(-3);
     }
-    
+ */   
     GpioInterrupt::instance()->addPin(Configuration::instance()->m_flowRatePin);
     GpioInterrupt::instance()->setPinCallback(Configuration::instance()->m_flowRatePin, flowRateCallback);
     
