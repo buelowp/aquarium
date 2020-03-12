@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.0)
 
-project (errors)
+project (mqtt)
 
 file (GLOB SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 file (GLOB HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
@@ -12,11 +12,6 @@ set (CMAKE_THREAD_PREFER_PTHREAD TRUE)
 
 find_package (Threads REQUIRED)
 
-include_directories (${CMAKE_SOURCE_DIR}/timer 
-                    ${CMAKE_SOURCE_DIR}/app 
-                    ${CMAKE_SOURCE_DIR}/atlas 
-                    ${CMAKE_SOURCE_DIR}/DS18B20 
-                    ${CMAKE_SOURCE_DIR}/mcp3008
-                    ${CMAKE_SOURCE_DIR}/mqtt)
-
 add_library (${PROJECT_NAME} STATIC ${SOURCES})
+target_link_libraries (${PROJECT_NAME} Threads::Threads)
+

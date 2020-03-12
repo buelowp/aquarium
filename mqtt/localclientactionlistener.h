@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2020 <copyright holder> <email>
- *
+ * Copyright (c) 2020 Peter Buelow <email>
+ * 
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -9,10 +9,10 @@
  * copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following
  * conditions:
- *
+ * 
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- *
+ * 
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -23,22 +23,27 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef WARNINGERROR_H
-#define WARNINGERROR_H
+#ifndef LOCALCLIENTACTIONLISTENER_H
+#define LOCALCLIENTACTIONLISTENER_H
 
-#include <mqtt/async_client.h>
-#include "baseerror.h"
+#include <string>
+#include <iostream>
+#include <mqtt/iaction_listener.h>
+#include <mqtt/token.h>
 
-class Warning : public BaseError
+/**
+ * @todo write docs
+ */
+class LocalClientActionListener : public virtual mqtt::iaction_listener
 {
 public:
-    Warning();
-    Warning(unsigned int handle, std::string msg, mqtt::async_client *client = nullptr, unsigned int timeout = 0);
-    Warning(const Warning &we);
-    ~Warning();
-    
-    void cancel();
-    void activate();
+    LocalClientActionListener(const std::string& name) : m_name(name) {}
+
+private:
+    virtual void on_success(const mqtt::token& asyncActionToken) override;
+    virtual void on_failure(const mqtt::token& asyncActionToken) override;
+
+    std::string m_name;
 };
 
-#endif // WARNINGERROR_H
+#endif // LOCALCLIENTACTIONLISTENER_H

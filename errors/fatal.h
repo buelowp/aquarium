@@ -27,7 +27,7 @@
 #define FATALERROR_H
 
 #include "baseerror.h"
-#include "mqttclient.h"
+#include <mqtt/async_client.h>
 
 /**
  * @todo write docs
@@ -36,7 +36,7 @@ class Fatal : public BaseError
 {
 public:
     Fatal();
-    Fatal(unsigned int handle, std::string msg, MQTTClient *client = nullptr, unsigned int timeout = 0);
+    Fatal(unsigned int handle, std::string msg, mqtt::async_client *client = nullptr, unsigned int timeout = 0);
     Fatal(const Fatal& fe);
     virtual ~Fatal();
     

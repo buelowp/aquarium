@@ -40,7 +40,6 @@
 
 #include "potentialhydrogen.h"
 #include "dissolvedoxygen.h"
-#include "mqttclient.h"
 #include "flowrate.h"
 #include "itimer.h"
 #include "temperature.h"
@@ -50,6 +49,7 @@
 #include "fatal.h"
 #include "critical.h"
 #include "warning.h"
+#include "localmqttcallback.h"
 
 #define ONE_SECOND          1000
 #define TEN_SECONDS         (ONE_SECOND * 10)
@@ -103,6 +103,7 @@ bool cisCompare(const std::string & str1, const std::string &str2)
 
 void decodeStatusResponse(std::string which, std::string &response)
 {
+    mqtt::message_ptr pubmsg;
     nlohmann::json j;
     int pos = response.find_last_of(",");
     double voltage;
@@ -115,16 +116,18 @@ void decodeStatusResponse(std::string which, std::string &response)
         else 
             std::cout << "probe is reporting an unusual voltage (" << voltage << "), it may not be operating correctly.";
         if (which == "pH") {
-            if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqtt->isConnected()) {
+            if (Configuration::instance()->m_mqtt->is_connected()) {
                 j["aquarium"]["device"]["ph"]["voltage"] = response.substr(pos + 1);
-                Configuration::instance()->m_mqtt->publish(NULL, "aquarium/device", j.dump().size(), j.dump().c_str());
+                pubmsg = mqtt::make_message("aquarium/device", j.dump());
+                Configuration::instance()->m_mqtt->publish(pubmsg);
             }
             Configuration::instance()->m_phVoltage = response.substr(pos + 1);
         }
         else if (which == "DO") {
-            if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqtt->isConnected()) {
-                j["aquarium"]["device"]["dissolvedoxygen"]["voltage"] = response.substr(pos + 1);
-                Configuration::instance()->m_mqtt->publish(NULL, "aquarium/device", j.dump().size(), j.dump().c_str());
+            if (Configuration::instance()->m_mqtt->is_connected()) {
+                j["aquarium"]["device"]["dissolvedoxygen"]["version"] = response.substr(pos + 1);
+                pubmsg = mqtt::make_message("aquarium/device", j.dump());
+                Configuration::instance()->m_mqtt->publish(pubmsg);
             }
             Configuration::instance()->m_o2Voltage = response.substr(pos + 1);
         }
@@ -136,22 +139,25 @@ void decodeStatusResponse(std::string which, std::string &response)
 
 void decodeInfoResponse(std::string which, std::string &response)
 {
+    mqtt::message_ptr pubmsg;
     nlohmann::json j;
     int pos = response.find_last_of(",");
     
     if (pos != std::string::npos) {
         std::cout << "probe is running firmware version " << response.substr(pos + 1);
         if (which == "pH") {
-            if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqtt->isConnected()) {
+            if (Configuration::instance()->m_mqtt->is_connected()) {
                 j["aquarium"]["device"]["ph"]["version"] = response.substr(pos + 1);
-                Configuration::instance()->m_mqtt->publish(NULL, "aquarium/device", j.dump().size(), j.dump().c_str());
+                pubmsg = mqtt::make_message("aquarium/device", j.dump());
+                Configuration::instance()->m_mqtt->publish(pubmsg);
             }
             Configuration::instance()->m_phVersion = response.substr(pos + 1);
         }
         else if (which == "DO") {
-            if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqtt->isConnected()) {
+            if (Configuration::instance()->m_mqtt->is_connected()) {
                 j["aquarium"]["device"]["dissolvedoxygen"]["version"] = response.substr(pos + 1);
-                Configuration::instance()->m_mqtt->publish(NULL, "aquarium/device", j.dump().size(), j.dump().c_str());
+                pubmsg = mqtt::make_message("aquarium/device", j.dump());
+                Configuration::instance()->m_mqtt->publish(pubmsg);
             }
             Configuration::instance()->m_o2Version = response.substr(pos + 1);
         }
@@ -163,22 +169,25 @@ void decodeInfoResponse(std::string which, std::string &response)
 
 void decodeTempCompensation(std::string which, std::string &response)
 {
+    mqtt::message_ptr pubmsg;
     nlohmann::json j;
 
     int pos = response.find_last_of(",");
     if (pos != std::string::npos) {
         std::cout << "probe has a temp compensation value of " << response.substr(pos + 1) << "C";
         if (which == "pH") {
-            if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqtt->isConnected()) {
+            if (Configuration::instance()->m_mqtt->is_connected()) {
                 j["aquarium"]["device"]["ph"]["tempcompensation"] = response.substr(pos + 1);
-                Configuration::instance()->m_mqtt->publish(NULL, "aquarium/device", j.dump().size(), j.dump().c_str());
+                pubmsg = mqtt::make_message("aquarium/device", j.dump());
+                Configuration::instance()->m_mqtt->publish(pubmsg);
             }
             Configuration::instance()->m_o2TempComp = response.substr(pos + 1);
         }
         else if (which == "DO") {
-            if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqtt->isConnected()) {
+            if (Configuration::instance()->m_mqtt->is_connected()) {
                 j["aquarium"]["device"]["dissolvedoxygen"]["tempcompensation"] = response.substr(pos + 1);
-                Configuration::instance()->m_mqtt->publish(NULL, "aquarium/device", j.dump().size(), j.dump().c_str());
+                pubmsg = mqtt::make_message("aquarium/device", j.dump());
+                Configuration::instance()->m_mqtt->publish(pubmsg);
             }
             Configuration::instance()->m_o2TempComp = response.substr(pos + 1);
         }
@@ -253,49 +262,13 @@ void flowRateCallback(GpioInterrupt::MetaData *md)
     
 }
 
-void aioGenericCallback(AdafruitIO::CallbackType type, int code)
-{
-    switch (type) {
-        case AdafruitIO::CallbackType::CONNECT:
-            syslog(LOG_INFO, "AdafruitIO connected");
-            break;
-        case AdafruitIO::CallbackType::DISCONNECT:
-            syslog(LOG_NOTICE, "AdafruitIO disconnect event: %d", code);
-            break;
-        default:
-            break;
-    }
-}
-
-void mqttGenericCallback(MQTTClient::CallbackType type, int code)
-{
-    switch (type) {
-        case MQTTClient::CallbackType::CONNECT:
-            syslog(LOG_INFO, "MQTT connected");
-            break;
-        case MQTTClient::CallbackType::DISCONNECT:
-            syslog(LOG_NOTICE, "MQTT disconnect event: %d", code);
-            break;
-        default:
-            break;
-    }
-}
-
-void usage(const char *name)
-{
-    std::cerr << "usage: " << name << " -h <server> -p <port> -n <unique id> -u <username> -k <password/key> -d" << std::endl;
-    std::cerr << "\t-c alternate configuration file (defaults to $HOME/.config/aquarium.conf" << std::endl;
-    std::cerr << "\t-h Print usage and exit" << std::endl;
-    std::cerr << "\t-d Daemonize the application to run in the background" << std::endl;
-    exit(-1);
-}
-
 void getWaterLevel()
 {
 }
 
 void sendResultData()
 {
+    mqtt::message_ptr pubmsg;
     nlohmann::json j;
     unsigned int result = 0;
     std::time_t t = std::time(nullptr);
@@ -326,13 +299,9 @@ void sendResultData()
     }
     j["aquarium"]["ph"] = Configuration::instance()->m_ph->getPH();
     j["aquarium"]["oxygen"] = Configuration::instance()->m_oxygen->getDO();
-    if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqtt->isConnected()) {
-        std::cout << j.dump(4) << std::endl;
-        Configuration::instance()->m_mqtt->publish(NULL, "aquarium/data", j.dump().size(), j.dump().c_str());
-    }
-    if (Configuration::instance()->m_aioEnabled && Configuration::instance()->m_aioConnected) {
-        Configuration::instance()->m_aio->publish(NULL, AIO_LEVEL_FEED, j.dump().size(), j.dump().c_str());
-    }
+    
+    pubmsg = mqtt::make_message("aquarium/data", j.dump());
+    Configuration::instance()->m_mqtt->publish(pubmsg);
 }
 
 void setTempCompensation()
@@ -359,6 +328,7 @@ void setTempCompensation()
 void sendTempProbeIdentification()
 {
     std::map<std::string, std::string> devices = Configuration::instance()->m_temp->devices();
+    mqtt::message_ptr pubmsg;
     nlohmann::json j;
 
     auto it = devices.begin();
@@ -368,7 +338,20 @@ void sendTempProbeIdentification()
         j["aquarium"]["device"]["ds18b20"]["device"] = it->first;
         it++;
     }
-    Configuration::instance()->m_mqtt->publish(NULL, "aquarium/devices", j.dump().size(), j.dump().c_str());
+    pubmsg = mqtt::make_message("aquarium/devices", j.dump());
+    Configuration::instance()->m_mqtt->publish(pubmsg);
+}
+
+void mqttIncomingMessage(std::string topic, std::string message)
+{
+}
+
+void mqttConnectionLost()
+{
+}
+
+void mqttConnected()
+{
 }
 
 void mainloop()
@@ -391,12 +374,6 @@ void mainloop()
     setTempCompensation();
     
     while (1) {
-        if (Configuration::instance()->m_aioEnabled && Configuration::instance()->m_aioConnected)
-            Configuration::instance()->m_aio->loop();
-        
-        if (Configuration::instance()->m_mqttEnabled && Configuration::instance()->m_mqttConnected)
-            Configuration::instance()->m_mqtt->loop();
-        
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
     
@@ -404,6 +381,39 @@ void mainloop()
     phUpdate.stop();
     sendUpdate.stop();
     tempCompensation.stop();
+}
+
+
+bool testNetwork(std::string server)
+{
+    int count = 0;
+    bool activeWarning = false;
+    unsigned int handle;
+    std::string ping = "ping" + server;
+    
+    while (system(ping.c_str())) {
+        if (!activeWarning) {
+            handle = g_errors.warning(Configuration::instance()->nextHandle(), "No Network");
+            activeWarning = true;
+        }
+        if (count++ == 300) {
+            syslog(LOG_ERR, "Network is not coming up, giving up...");
+            return false;
+        }
+        syslog(LOG_ERR, "Network does not seem to be available, pending...");
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    g_errors.clearWarning(handle);
+    return true;
+}
+
+void usage(const char *name)
+{
+    std::cerr << "usage: " << name << " -h <server> -p <port> -n <unique id> -u <username> -k <password/key> -d" << std::endl;
+    std::cerr << "\t-c alternate configuration file (defaults to $HOME/.config/aquarium.conf" << std::endl;
+    std::cerr << "\t-h Print usage and exit" << std::endl;
+    std::cerr << "\t-d Daemonize the application to run in the background" << std::endl;
+    exit(-1);
 }
 
 /**
@@ -465,30 +475,6 @@ bool parse_args(int argc, char **argv)
     return rval;
 }
 
-bool testNetwork(std::string server)
-{
-    int count = 0;
-    bool activeWarning = false;
-    unsigned int handle;
-    
-    if (Configuration::instance()->m_mqtt) {
-        while (!Configuration::instance()->m_mqtt->isConnected()) {
-            if (!activeWarning) {
-                handle = g_errors.warning(Configuration::instance()->nextHandle(), "No Network");
-                activeWarning = true;
-            }
-        }
-        if (count++ == 300) {
-            syslog(LOG_ERR, "Network is not coming up, giving up...");
-            return false;
-        }
-        syslog(LOG_ERR, "MQTT server does not seem to be available, pending...");
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-    g_errors.clearWarning(handle);
-    return true;
-}
-
 int main(int argc, char *argv[])
 {
     std::string progname = basename(argv[0]);
@@ -521,6 +507,28 @@ int main(int argc, char *argv[])
         syslog(LOG_ERR, "Unable to open GPIO for red led");
 
     initializeLeds();
+
+    mqtt::connect_options connopts;
+    connopts.set_keep_alive_interval(20);
+	connopts.set_clean_session(true);
+    connopts.set_automatic_reconnect(1, 10);
+
+    mqtt::async_client mqtt(Configuration::instance()->m_mqttServer, Configuration::instance()->m_localId);
+    LocalMQTTCallback callback(mqtt, connopts);
+    callback.setMessageCallback(mqttIncomingMessage);
+    callback.setConnectionLostCallback(mqttConnectionLost);
+    callback.setConnectedCallback(mqttConnected);
+    mqtt.set_callback(callback);
+    Configuration::instance()->m_mqtt = &mqtt;
+
+    try {
+		std::cout << "Connecting to the MQTT server..." << std::flush;
+		mqtt.connect(connopts, nullptr, callback);
+	}
+	catch (const mqtt::exception&) {
+		std::cerr << "\nERROR: Unable to connect to MQTT server: '" << Configuration::instance()->m_mqttServer << "'" << std::endl;
+		exit(-3);
+	}
 
     // We will assume that if we can get to our local MQTT instance, we can probably get to AdafruitIO as well
     if (!testNetwork(Configuration::instance()->m_mqttServer)) {

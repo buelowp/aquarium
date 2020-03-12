@@ -23,27 +23,44 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "mcp3008.h"
+#include "localmqttcallback.h"
 
-MCP3008::MCP3008(int device)
-{
-    m_enabled = false;
-    if (wiringPiSetup() == -1)
-        m_enabled = false;
-
-    mcp3004Setup(200, device); // 3004 and 3008 are the same 4/8 channels
-    m_enabled = true;
-}
-
-MCP3008::~MCP3008()
+LocalMQTTCallback::LocalMQTTCallback(mqtt::async_client& cli, mqtt::connect_options& connOpts) : 
+    m_retries(0), m_client(cli), m_clientConnOpts(connOpts), m_subListener("Subscription")
 {
 }
 
-int MCP3008::reading(int channel)
+void LocalMQTTCallback::connection_lost(const std::string& cause)
 {
-    if (m_enabled)
-        return analogRead(200 + channel);
+    try {
+        m_connectionLostCallback();
+    }
+    catch (std::exception &e) {
+        std::cout << __FUNCTION__ << ": Error trying to call the lost connection callback: " << e.what();
+    }
+}
 
-    return 0;
+void LocalMQTTCallback::connected(const std::string& cause)
+{
+    try {
+        m_connectedCallback();
+    }
+    catch (std::exception &e) {
+        std::cout << __FUNCTION__ << ": Error trying to call the connected callback: " << e.what();
+    }
+}
+
+void LocalMQTTCallback::delivery_complete(mqtt::delivery_token_ptr tok)
+{
+}
+
+void LocalMQTTCallback::message_arrived(mqtt::const_message_ptr msg)
+{
+    try {
+        m_messageCallback(msg->get_topic(), msg->get_payload_str());
+    }
+    catch (std::exception &e) {
+        std::cout << __FUNCTION__ << ": Error trying to call the lost connection callback: " << e.what();
+    }
 }
 

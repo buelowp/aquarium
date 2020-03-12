@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2020 <copyright holder> <email>
- *
+ * Copyright (c) 2020 Peter Buelow <email>
+ * 
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -9,10 +9,10 @@
  * copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following
  * conditions:
- *
+ * 
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- *
+ * 
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -23,22 +23,27 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef WARNINGERROR_H
-#define WARNINGERROR_H
+#include "localclientactionlistener.h"
 
-#include <mqtt/async_client.h>
-#include "baseerror.h"
-
-class Warning : public BaseError
+void LocalClientActionListener::on_success(const mqtt::token &asyncActionToken)
 {
-public:
-    Warning();
-    Warning(unsigned int handle, std::string msg, mqtt::async_client *client = nullptr, unsigned int timeout = 0);
-    Warning(const Warning &we);
-    ~Warning();
+    std::cout << m_name << " failure";
+	if (asyncActionToken.get_message_id() != 0)
+        std::cout << " for token: [" << asyncActionToken.get_message_id() << "]" << std::endl;
     
-    void cancel();
-    void activate();
-};
+    std::cout << std::endl;
+}
 
-#endif // WARNINGERROR_H
+void LocalClientActionListener::on_failure(const mqtt::token &asyncActionToken)
+{
+    std::cout << m_name << " success";
+    if (asyncActionToken.get_message_id() != 0)
+        std::cout << " for token: [" << asyncActionToken.get_message_id() << "]" << std::endl;
+    
+    auto top = asyncActionToken.get_topics();
+    
+    if (top && !top->empty())
+        std::cout << "\ttoken topic: '" << (*top)[0] << "', ..." << std::endl;
+    
+    std::cout << std::endl;
+}

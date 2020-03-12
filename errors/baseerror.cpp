@@ -32,7 +32,7 @@ BaseError::BaseError()
     m_priority = Priority::FATAL;
 }
 
-BaseError::BaseError(unsigned int handle, std::string msg, MQTTClient *client, unsigned int timeout) :
+BaseError::BaseError(unsigned int handle, std::string msg, mqtt::async_client *client, unsigned int timeout) :
     m_message(msg), m_timeout(timeout), m_mqtt(client), m_handle(handle)
 {
 }
