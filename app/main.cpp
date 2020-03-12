@@ -392,6 +392,39 @@ void mainloop()
     tempCompensation.stop();
 }
 
+
+bool testNetwork(std::string server)
+{
+    int count = 0;
+    bool activeWarning = false;
+    unsigned int handle;
+    std::string ping = "ping" + server;
+    
+    while (system(ping.c_str())) {
+        if (!activeWarning) {
+            handle = g_errors.warning(Configuration::instance()->nextHandle(), "No Network");
+            activeWarning = true;
+        }
+        if (count++ == 300) {
+            syslog(LOG_ERR, "Network is not coming up, giving up...");
+            return false;
+        }
+        syslog(LOG_ERR, "Network does not seem to be available, pending...");
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    g_errors.clearWarning(handle);
+    return true;
+}
+
+void usage(const char *name)
+{
+    std::cerr << "usage: " << name << " -h <server> -p <port> -n <unique id> -u <username> -k <password/key> -d" << std::endl;
+    std::cerr << "\t-c alternate configuration file (defaults to $HOME/.config/aquarium.conf" << std::endl;
+    std::cerr << "\t-h Print usage and exit" << std::endl;
+    std::cerr << "\t-d Daemonize the application to run in the background" << std::endl;
+    exit(-1);
+}
+
 /**
  * \func bool parse_args(int argc, char **argv, std::string &name, std::string &mqtt, int &port)
  * \param arc integer argument count provied by shell
@@ -449,38 +482,6 @@ bool parse_args(int argc, char **argv)
     }
 
     return rval;
-}
-
-bool testNetwork(std::string server)
-{
-    int count = 0;
-    bool activeWarning = false;
-    unsigned int handle;
-    std::string ping = "ping" + server;
-    
-    while (system(ping.c_str())) {
-        if (!activeWarning) {
-            handle = g_errors.warning(Configuration::instance()->nextHandle(), "No Network");
-            activeWarning = true;
-        }
-        if (count++ == 300) {
-            syslog(LOG_ERR, "Network is not coming up, giving up...");
-            return false;
-        }
-        syslog(LOG_ERR, "Network does not seem to be available, pending...");
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-    g_errors.clearWarning(handle);
-    return true;
-}
-
-void usage(const char *name)
-{
-    std::cerr << "usage: " << name << " -h <server> -p <port> -n <unique id> -u <username> -k <password/key> -d" << std::endl;
-    std::cerr << "\t-c alternate configuration file (defaults to $HOME/.config/aquarium.conf" << std::endl;
-    std::cerr << "\t-h Print usage and exit" << std::endl;
-    std::cerr << "\t-d Daemonize the application to run in the background" << std::endl;
-    exit(-1);
 }
 
 int main(int argc, char *argv[])
