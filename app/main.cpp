@@ -30,6 +30,7 @@
 #include <cstring>
 #include <iomanip>
 #include <ctime>
+#include <sstream>
 
 #include <gpiointerruptpp.h>
 #include <adaio.h>
@@ -79,19 +80,19 @@ void eternalBlinkAndDie(int pin, int millihz)
 
 void initializeLeds()
 {
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_green_led, 1);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellow_led, 0);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 0);
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_greenLed, 1);
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellowLed, 0);
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_redLed, 0);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_green_led, 0);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellow_led, 1);
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_greenLed, 0);
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellowLed, 1);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellow_led, 0);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 1);
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellowLed, 0);
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_redLed, 1);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 0);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_green_led, 1);
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_redLed, 0);
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_greenLed, 1);
 }
 
 bool cisCompare(const std::string & str1, const std::string &str2)
@@ -342,8 +343,28 @@ void sendTempProbeIdentification()
     Configuration::instance()->m_mqtt->publish(pubmsg);
 }
 
+/*
+ * { "aquarium":{"device":[{"serial":"name"},{"serial":"name"}]}}
+ */
+void nameTempProbe(std::string json)
+{
+    auto j = nlohmann::json::parse(json);
+    auto device = j.find("device");
+    
+    if (device != j.end()) {
+        for (auto it : device->items()) {
+            std::stringstream str;
+            str << it.key() << ":" << it.value();
+            Configuration::instance()->setValue(std::string("probe"), str.str());
+        }
+    }
+}
+
 void mqttIncomingMessage(std::string topic, std::string message)
 {
+    if (topic == "aquarium/ds18b20/name") {
+        nameTempProbe(message);
+    }
 }
 
 void mqttConnectionLost()
@@ -352,6 +373,7 @@ void mqttConnectionLost()
 
 void mqttConnected()
 {
+    std::cout << "MQTT connected!" << std::endl;
 }
 
 void mainloop()
@@ -381,30 +403,6 @@ void mainloop()
     phUpdate.stop();
     sendUpdate.stop();
     tempCompensation.stop();
-}
-
-
-bool testNetwork(std::string server)
-{
-    int count = 0;
-    bool activeWarning = false;
-    unsigned int handle;
-    std::string ping = "ping" + server;
-    
-    while (system(ping.c_str())) {
-        if (!activeWarning) {
-            handle = g_errors.warning(Configuration::instance()->nextHandle(), "No Network");
-            activeWarning = true;
-        }
-        if (count++ == 300) {
-            syslog(LOG_ERR, "Network is not coming up, giving up...");
-            return false;
-        }
-        syslog(LOG_ERR, "Network does not seem to be available, pending...");
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-    g_errors.clearWarning(handle);
-    return true;
 }
 
 void usage(const char *name)
@@ -479,7 +477,6 @@ int main(int argc, char *argv[])
 {
     std::string progname = basename(argv[0]);
     
-    setlogmask(LOG_UPTO (LOG_INFO));
     openlog(progname.c_str(), LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
     
     syslog(LOG_NOTICE, "Application startup");
@@ -497,13 +494,13 @@ int main(int argc, char *argv[])
         exit(-2);
     }
 
-    if (!GpioInterrupt::instance()->addPin(Configuration::instance()->m_green_led, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
+    if (!GpioInterrupt::instance()->addPin(Configuration::instance()->m_greenLed, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
         syslog(LOG_ERR, "Unable to open GPIO for green led");
     
-    if (!GpioInterrupt::instance()->addPin(Configuration::instance()->m_yellow_led, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
+    if (!GpioInterrupt::instance()->addPin(Configuration::instance()->m_yellowLed, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
         syslog(LOG_ERR, "Unable to open GPIO for yellow led");
 
-    if (!GpioInterrupt::instance()->addPin(Configuration::instance()->m_red_led, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
+    if (!GpioInterrupt::instance()->addPin(Configuration::instance()->m_redLed, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
         syslog(LOG_ERR, "Unable to open GPIO for red led");
 
     initializeLeds();
@@ -530,16 +527,10 @@ int main(int argc, char *argv[])
 		exit(-3);
 	}
 
-    // We will assume that if we can get to our local MQTT instance, we can probably get to AdafruitIO as well
-    if (!testNetwork(Configuration::instance()->m_mqttServer)) {
-        syslog(LOG_ERR, "Cannot get to server %s, so we cannot continue", Configuration::instance()->m_mqttServer.c_str());
-        g_errors.fatal(0, "Network Not Available");
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        exit(-3);
+    if (Configuration::instance()->m_frEnabled) {
+        GpioInterrupt::instance()->addPin(Configuration::instance()->m_flowRatePin);
+        GpioInterrupt::instance()->setPinCallback(Configuration::instance()->m_flowRatePin, flowRateCallback);
     }
-    
-    GpioInterrupt::instance()->addPin(Configuration::instance()->m_flowRatePin);
-    GpioInterrupt::instance()->setPinCallback(Configuration::instance()->m_flowRatePin, flowRateCallback);
     
     if (Configuration::instance()->m_aioEnabled)
         Configuration::instance()->m_aio = new AdafruitIO(Configuration::instance()->m_localId, 

@@ -30,17 +30,20 @@ AtlasScientificI2C::AtlasScientificI2C(uint8_t device, uint8_t address) :
 {
     char filename[40];
     sprintf(filename, "/dev/i2c-%d", m_device);
-        
-    m_enabled = true;
+    m_enabled = false;
+    
+    if (address > 0) {
+        m_enabled = true;
 
-    if ((m_fd = open(filename, O_RDWR)) < 0) {
-        syslog(LOG_ERR, "Failed to open i2c device %d", m_device);
-        m_enabled = false;
-    }
+        if ((m_fd = open(filename, O_RDWR)) < 0) {
+            syslog(LOG_ERR, "Failed to open i2c device %d", m_device);
+            m_enabled = false;
+        }
 
-    if (ioctl(m_fd, I2C_SLAVE, m_address) < 0) {
-        syslog(LOG_ERR, "Failed to acquire bus access and/or talk to slave at address %x", m_address);
-        m_enabled = false;
+        if (ioctl(m_fd, I2C_SLAVE, m_address) < 0) {
+            syslog(LOG_ERR, "Failed to acquire bus access and/or talk to slave at address %x", m_address);
+            m_enabled = false;
+        }
     }
 }
 
@@ -52,6 +55,9 @@ AtlasScientificI2C::~AtlasScientificI2C()
 
 bool AtlasScientificI2C::sendCommand(int cmd, uint8_t *buf, int size, int delay)
 {
+    if (!m_enabled)
+        return false;
+    
     m_commandRunning.lock();
     
     m_lastCommand = cmd;
@@ -71,6 +77,9 @@ void AtlasScientificI2C::readValue()
     uint8_t buffer[MAX_READ_SIZE];
     int index = 0;
     int bytes = 0;
+    
+    if (!m_enabled)
+        return;
     
     memset(buffer, 0, MAX_READ_SIZE);
     
@@ -93,18 +102,27 @@ void AtlasScientificI2C::readValue()
 
 bool AtlasScientificI2C::sendInfoCommand()
 {
+    if (!m_enabled)
+        return false;
+    
     uint8_t i[1] = {'i'};
     return sendCommand(INFO, i, 1, 300);
 }
 
 bool AtlasScientificI2C::sendStatusCommand()
 {
+    if (!m_enabled)
+        return false;
+    
     uint8_t i[] = {'s','t','a','t','u','s'};
     return sendCommand(STATUS, i, 6, 300);
 }
 
 bool AtlasScientificI2C::sendReadCommand(int delay)
 {
+    if (!m_enabled)
+        return false;
+    
     uint8_t i[1] = {'r'};
     return sendCommand(READING, i, 1, delay);
 }

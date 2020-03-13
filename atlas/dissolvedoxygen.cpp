@@ -40,6 +40,9 @@ void DissolvedOxygen::response(int cmd, uint8_t *buffer, int size)
     std::vector<std::string> result;
     std::string DO("DO");
     
+    if (!m_enabled)
+        return;
+    
     for (int i = 0; i < size; i++) {
         r += static_cast<char>(buffer[i]);
     }
@@ -88,6 +91,9 @@ void DissolvedOxygen::response(int cmd, uint8_t *buffer, int size)
 
 void DissolvedOxygen::getLastResponse(std::string &r)
 {
+    if (!m_enabled)
+        return;
+    
     r.clear();
     
     for (int i = 0; i < m_lastResponse.size(); i++) {
@@ -99,6 +105,9 @@ void DissolvedOxygen::handleCalibration(std::string response)
 {
     std::vector<std::string> result;
     std::string cal("?CAL");
+    
+    if (!m_enabled)
+        return;
     
     result = split(response, ',');
     
@@ -133,6 +142,9 @@ void DissolvedOxygen::handleStatusResponse(std::string response)
     std::vector<std::string> results = split(response, ',');
     std::string status("?STATUS");
 
+    if (!m_enabled)
+        return;
+    
     if (results.size() == 3) {
         if (results[0] != status) {
             m_lastVoltage = 0.0;
@@ -161,6 +173,9 @@ void DissolvedOxygen::handleStatusResponse(std::string response)
 void DissolvedOxygen::calibrate(int cmd, uint8_t buf[], int size)
 {
     std::vector<uint8_t> payload;
+    
+    if (!m_enabled)
+        return;
     
     payload.push_back('C');
     payload.push_back('a');
@@ -196,6 +211,9 @@ void DissolvedOxygen::calibrate(int cmd, uint8_t buf[], int size)
 
 void DissolvedOxygen::handleReadResponse(std::string &response)
 {
+    if (!m_enabled)
+        return;
+    
     response.erase(response.begin());
     try {
         m_lastDOValue = std::stod(response);
@@ -209,6 +227,9 @@ void DissolvedOxygen::printBuffer(std::vector<uint8_t> &packet)
 {
     std::ios oldState(nullptr);
     
+    if (!m_enabled)
+        return;
+    
     oldState.copyfmt(std::cout);
     std::cout << "Packet: ";
     for (int i = 0; i < packet.size(); i++) {
@@ -220,6 +241,9 @@ void DissolvedOxygen::printBuffer(std::vector<uint8_t> &packet)
 
 void DissolvedOxygen::setTempCompensation(double temp)
 {
+    if (!m_enabled)
+        return;
+    
     std::stringstream ss;
     ss << std::fixed << std::setprecision(3) << temp;
     std::string val = ss.str();
@@ -235,6 +259,9 @@ void DissolvedOxygen::setTempCompensation(uint8_t *buf, int size)
 {
     std::vector<uint8_t> payload;
     
+    if (!m_enabled)
+        return;
+    
     payload.push_back('T');
     payload.push_back(',');
     
@@ -246,6 +273,9 @@ void DissolvedOxygen::setTempCompensation(uint8_t *buf, int size)
 
 void DissolvedOxygen::setTempCompensationAndRead(double temp)
 {
+    if (!m_enabled)
+        return;
+    
     std::stringstream ss;
     ss << std::fixed << std::setprecision(3) << temp;
     std::string val = ss.str();
@@ -261,6 +291,9 @@ void DissolvedOxygen::setTempCompensationAndRead(uint8_t *buf, int size)
 {
     std::vector<uint8_t> payload;
     
+    if (!m_enabled)
+        return;
+    
     payload.push_back('R');
     payload.push_back('T');
     payload.push_back(',');
@@ -274,6 +307,9 @@ void DissolvedOxygen::setTempCompensationAndRead(uint8_t *buf, int size)
 void DissolvedOxygen::getTempCompensation()
 {
     std::vector<uint8_t> payload;
+    
+    if (!m_enabled)
+        return;
     
     payload.push_back('T');
     payload.push_back(',');
