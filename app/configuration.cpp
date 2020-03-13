@@ -41,6 +41,45 @@ void Configuration::setConfigFile(std::string file)
     m_configFile = file;
 }
 
+bool Configuration::addArrayEntry(std::string array, std::map<std::string, std::string> &entry)
+{
+    libconfig::Config config;
+    
+    try {
+        config.readFile(m_configFile.c_str());
+    }
+    catch(const libconfig::FileIOException &fioex) {
+        std::cerr << "I/O error while reading file." << std::endl;
+        return false;
+    }
+    catch(const libconfig::ParseException &pex) {
+        std::cerr << "Parse error at " << pex.getFile() << ":" << pex.getLine() << " - " << pex.getError() << std::endl;
+        return false;
+    }
+    
+    libconfig::Setting &root = config.getRoot();
+
+    if (!root.exists(array)) {
+        root.add(array, libconfig::Setting::TypeList);
+    }
+    
+    libconfig::Setting &arrayEntry = root[array.c_str()];
+    for (std::pair<std::string, std::string> element : entry) {
+        arrayEntry.add("device", libconfig::Setting::TypeString) = element.first;
+        arrayEntry.add("name", libconfig::Setting::TypeString) = element.second;
+    }
+    
+    try {
+        config.writeFile(m_configFile.c_str());
+        std::cerr << "Updated configuration successfully written to: " << m_configFile << std::endl;
+    }
+    catch(const libconfig::FileIOException &fioex) {
+        std::cerr << "I/O error while writing file: " << m_configFile << std::endl;
+        return false;
+    }
+    return true;
+}
+
 bool Configuration::setValue(std::string key, std::string value)
 {
     libconfig::Config config;
@@ -80,29 +119,15 @@ bool Configuration::setValue(std::string key, std::string value)
 bool Configuration::readConfigFile()
 {
     libconfig::Config config;
-    FILE *fs = nullptr;
-    const char *aioServer = nullptr;
-    const char *aioUserName = nullptr;
-    const char *aioKey = nullptr;
-    const char *mqttServer = nullptr;
-    const char *mqttUserName = nullptr;
-    const char *mqttPassword = nullptr;
     std::string localId;
+    std::string serial;
+    std::string name;
     const char *debug = nullptr;
-    const char *spidev = nullptr;
-    int aioPort;
-    int mqttPort;
-    int frpin;
-    int owpin;
-    int aioEnabled;
-    int mqttEnabled;
-    int o2sensor;
-    int phsensor;
-    int red;
-    int yellow;
-    int green;
-    int wlindex;
+    std::map<std::string, std::string> tempDevices;
     
+    m_temp = new Temperature();
+    tempDevices = m_temp->devices();
+
     std::cout << __FUNCTION__ << ":" << __LINE__ << ": Staring config file read for " << m_configFile << std::endl;
     try {
         config.readFile(m_configFile.c_str());
@@ -299,15 +324,33 @@ bool Configuration::readConfigFile()
         else {
             setlogmask(LOG_UPTO (LOG_WARNING));
         }
+        
+        if (root.exists("ds18b20")) {
+            const libconfig::Setting &probe = root["ds18b20"];
+            for (int i = 0; i < probe.getLength(); i++) {
+                probe.lookupValue("device", serial);
+                probe.lookupValue("name", name);
+                
+                auto device = tempDevices.find(serial);
+                if (device != tempDevices.end()) {
+                    m_temp->setNameForDevice(serial, name);
+                }
+                else { // TODO: Figure out how to report this as an error!
+                    syslog(LOG_WARNING, "DS18B20 probe %s in config, but not connected...", serial.c_str());
+                    fprintf(stderr, "DS18B20 probe %s in config, but not connected...\n", serial.c_str());
+                }
+            }
+        }
             
     }
     catch (libconfig::SettingNotFoundException &e) {
+        syslog(LOG_ERR, "SettingNotFound: %s", e.what());
+        fprintf(stderr, "SettingNotFound: %s", e.what());
     }
 
     m_oxygen = new DissolvedOxygen(1, m_o2SensorAddress);
     m_ph = new PotentialHydrogen (1, m_phSensorAddress);
     m_fr = new FlowRate();
-    m_temp = new Temperature();
     m_adc = new MCP3008(0);
     
     return true;

@@ -62,6 +62,7 @@ public:
     void setConfigFile(std::string);
     unsigned int nextHandle() { return m_handle++; }
     bool setValue(std::string, std::string);
+    bool addArrayEntry(std::string, std::map<std::string, std::string>&);
     
     AdafruitIO *m_aio;
     mqtt::connect_options m_mqttConnectionOptions;

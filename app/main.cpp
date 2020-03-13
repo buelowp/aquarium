@@ -348,15 +348,19 @@ void sendTempProbeIdentification()
  */
 void nameTempProbe(std::string json)
 {
+    std::map<std::string, std::string> entry;
     auto j = nlohmann::json::parse(json);
     auto device = j.find("device");
     
     if (device != j.end()) {
         for (auto it : device->items()) {
-            std::stringstream str;
-            str << it.key() << ":" << it.value();
-            Configuration::instance()->setValue(std::string("probe"), str.str());
+            std::stringstream key;
+            std::stringstream value;
+            key << it.key();
+            value << it.value();
+            entry[key.str()] = value.str();
         }
+        Configuration::instance()->addArrayEntry(std::string("ds18b20"), entry);
     }
 }
 
