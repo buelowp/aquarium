@@ -348,10 +348,12 @@ void mqttIncomingMessage(std::string topic, std::string message)
 
 void mqttConnectionLost()
 {
+    std::cout << "MQTT disconnected" << std::endl;
 }
 
 void mqttConnected()
 {
+    std::cout << "MQTT connected" << std::endl;
 }
 
 void mainloop()
@@ -389,7 +391,7 @@ bool testNetwork(std::string server)
     int count = 0;
     bool activeWarning = false;
     unsigned int handle;
-    std::string ping = "ping" + server;
+    std::string ping = "ping " + server;
     
     while (system(ping.c_str())) {
         if (!activeWarning) {
@@ -531,12 +533,14 @@ int main(int argc, char *argv[])
 	}
 
     // We will assume that if we can get to our local MQTT instance, we can probably get to AdafruitIO as well
+    /*
     if (!testNetwork(Configuration::instance()->m_mqttServer)) {
         syslog(LOG_ERR, "Cannot get to server %s, so we cannot continue", Configuration::instance()->m_mqttServer.c_str());
         g_errors.fatal(0, "Network Not Available");
         std::this_thread::sleep_for(std::chrono::seconds(1));
         exit(-3);
     }
+    */
     
     GpioInterrupt::instance()->addPin(Configuration::instance()->m_flowRatePin);
     GpioInterrupt::instance()->setPinCallback(Configuration::instance()->m_flowRatePin, flowRateCallback);
