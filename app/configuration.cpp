@@ -64,6 +64,7 @@ bool Configuration::updateArray(std::string array, std::map<std::string, std::st
         return false;
     }
 
+    // TODO: Add the ability to insert a new entry if the map is larger than what's in the array
     try {
         libconfig::Setting &arrayEntry = root[array.c_str()];
         for (const auto& [key, value] : entry) {
