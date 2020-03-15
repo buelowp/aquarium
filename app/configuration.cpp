@@ -29,11 +29,11 @@ Configuration::Configuration()
 {
     m_handle = 1;
     m_frEnabled = 0;
+    m_newTempDeviceFound = false;
 }
 
 Configuration::~Configuration()
 {
-
 }
 
 void Configuration::setConfigFile(std::string file)
@@ -41,7 +41,64 @@ void Configuration::setConfigFile(std::string file)
     m_configFile = file;
 }
 
-bool Configuration::addArrayEntry(std::string array, std::map<std::string, std::string> &entry)
+bool Configuration::updateArray(std::string array, std::map<std::string, std::string> &entry)
+{
+    libconfig::Config config;
+    
+    try {
+        config.readFile(m_configFile.c_str());
+    }
+    catch(const libconfig::FileIOException &fioex) {
+        std::cerr << "I/O error while reading file." << std::endl;
+        return false;
+    }
+    catch(const libconfig::ParseException &pex) {
+        std::cerr << "Parse error at " << pex.getFile() << ":" << pex.getLine() << " - " << pex.getError() << std::endl;
+        return false;
+    }
+    
+    libconfig::Setting &root = config.getRoot();
+    
+    if (!root.exists(array)) {
+        fprintf(stderr, "Array %s does not exist, use addArray()\n", array.c_str());
+        return false;
+    }
+
+    try {
+        libconfig::Setting &arrayEntry = root[array.c_str()];
+        for (const auto& [key, value] : entry) {
+            for (int i = 0; i < arrayEntry.getLength(); i++) {
+                const libconfig::Setting &device = arrayEntry[i];
+                std::string serial;
+                std::string name;
+                if (!device.lookupValue("device", serial) || !device.lookupValue("name", name)) {
+                    fprintf(stderr, "Unable to find device or name in array...\n");
+                    return false;
+                }
+                
+                if (serial == key) {
+                    device["device"] = serial;
+                    device["name"] = value;
+                }
+            }
+        }
+    }
+    catch (const libconfig::SettingException &e) {
+        fprintf(stderr, "Unable to add elements to the new array: %s\n", e.what());
+        return false;
+    }
+    
+    try {
+        config.writeFile(m_configFile.c_str());
+        std::cerr << "Updated configuration successfully written to: " << m_configFile << std::endl;
+    }
+    catch(const libconfig::FileIOException &fioex) {
+        std::cerr << "I/O error while writing file: " << m_configFile << std::endl;
+        return false;
+    }
+}
+
+bool Configuration::addArray(std::string array, std::map<std::string, std::string> &entry)
 {
     libconfig::Config config;
     
@@ -63,10 +120,17 @@ bool Configuration::addArrayEntry(std::string array, std::map<std::string, std::
         root.add(array, libconfig::Setting::TypeList);
     }
     
-    libconfig::Setting &arrayEntry = root[array.c_str()];
-    for (std::pair<std::string, std::string> element : entry) {
-        arrayEntry.add("device", libconfig::Setting::TypeString) = element.first;
-        arrayEntry.add("name", libconfig::Setting::TypeString) = element.second;
+    try {
+        libconfig::Setting &arrayEntry = root[array.c_str()];
+        for (const auto& [key, value] : entry) {
+            libconfig::Setting &device = arrayEntry.add(libconfig::Setting::TypeGroup);
+            std::cout << "Adding " << key << ":" << value << std::endl;
+            device.add("device", libconfig::Setting::TypeString) = key;
+            device.add("name", libconfig::Setting::TypeString) = value;
+        }
+    }
+    catch (const libconfig::SettingTypeException &e) {
+        fprintf(stderr, "Unable to add elements to the new array: %s\n", e.what());
     }
     
     try {
@@ -124,6 +188,7 @@ bool Configuration::readConfigFile()
     std::string name;
     std::string debug;
     std::map<std::string, std::string> tempDevices;
+    bool noDeviceArray = false;
     
     m_temp = new Temperature();
     tempDevices = m_temp->devices();
@@ -326,23 +391,30 @@ bool Configuration::readConfigFile()
                 setlogmask(LOG_UPTO (LOG_WARNING));
             }
         }
-        catch (libconfig::SettingTypeException &e) {
-            syslog(LOG_ERR, "SettingTypeException: %s", e.what());
-            fprintf(stderr, "SettingTypeException: %s", e.what());
+        catch (libconfig::SettingException &e) {
+            syslog(LOG_ERR, "Error configuring logging: : %s", e.what());
+            fprintf(stderr, "Error configuring logging: %s\n", e.what());
         }
         
         try {
             if (root.exists("ds18b20")) {
                 const libconfig::Setting &probe = root["ds18b20"];
+                if (tempDevices.size() > probe.getLength()) {
+                    syslog(LOG_WARNING, "New DS18B20 device detected, adding to configuration");
+                    fprintf(stderr, "New DS18B20 device detected, adding to configuration\n");                    
+                    m_newTempDeviceFound = true;
+                }
                 for (int i = 0; i < probe.getLength(); i++) {
-                    probe.lookupValue("device", serial);
-                    probe.lookupValue("name", name);
+                    const libconfig::Setting &device = probe[i];
+                    device.lookupValue("device", serial);
+                    device.lookupValue("name", name);
                     
-                    auto device = tempDevices.find(serial);
-                    if (device != tempDevices.end()) {
+                    auto found = tempDevices.find(serial);
+                    if (found != tempDevices.end()) {
                         m_temp->setNameForDevice(serial, name);
                     }
                     else { // TODO: Figure out how to report this as an error!
+                        m_invalidTempDeviceInConfig.push_back(serial);
                         syslog(LOG_WARNING, "DS18B20 probe %s in config, but not connected...", serial.c_str());
                         fprintf(stderr, "DS18B20 probe %s in config, but not connected...\n", serial.c_str());
                     }
@@ -350,20 +422,26 @@ bool Configuration::readConfigFile()
             }
             else {
                 if (tempDevices.size())
-                    addArrayEntry("ds18b20", tempDevices);
+                    noDeviceArray = true;
             }
         }
         catch (libconfig::SettingException &e) {
-            syslog(LOG_ERR, "Cannot update ds18b20 array: SettingTypeException: %s", e.what());
-            fprintf(stderr, "Cannot update ds18b20 array: SettingTypeException: %s", e.what());
+            syslog(LOG_ERR, "Cannot update ds18b20 array: %s", e.what());
+            fprintf(stderr, "Cannot update ds18b20 array: %s\n", e.what());
         }
             
     }
-    catch (libconfig::SettingNotFoundException &e) {
-        syslog(LOG_ERR, "SettingNotFound: %s", e.what());
-        fprintf(stderr, "SettingNotFound: %s", e.what());
+    catch (libconfig::SettingException &e) {
+        syslog(LOG_ERR, "SettingException: %s", e.what());
+        fprintf(stderr, "SettingException: %s\n", e.what());
     }
 
+    if (noDeviceArray)
+        addArray("ds18b20", tempDevices);
+    
+    if (m_newTempDeviceFound)
+        updateArray("ds18b20", tempDevices);
+    
     m_oxygen = new DissolvedOxygen(1, m_o2SensorAddress);
     m_ph = new PotentialHydrogen (1, m_phSensorAddress);
     m_fr = new FlowRate();
