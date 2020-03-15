@@ -338,13 +338,15 @@ void sendTempProbeIdentification()
     std::map<std::string, std::string> devices = Configuration::instance()->m_temp->devices();
     mqtt::message_ptr pubmsg;
     nlohmann::json j;
+    int index = 1;
 
     auto it = devices.begin();
     
     while (it != devices.end()) {
-        j["aquarium"]["device"]["ds18b20"]["name"] = it->second;
-        j["aquarium"]["device"]["ds18b20"]["device"] = it->first;
+        j["aquarium"]["device"]["ds18b20"][std::to_string(index)]["name"] = it->second;
+        j["aquarium"]["device"]["ds18b20"][std::to_string(index)]["device"] = it->first;
         it++;
+        index++;
     }
     pubmsg = mqtt::make_message("aquarium/devices", j.dump());
     if (Configuration::instance()->m_mqttConnected)
