@@ -31,6 +31,8 @@
 #include <iomanip>
 #include <ctime>
 #include <sstream>
+#include <mutex>
+#include <condition_variable>
 
 #include <gpiointerruptpp.h>
 #include <adaio.h>
@@ -66,6 +68,8 @@
 #define AIO_LEVEL_FEED      "pbuelow/feeds/aquarium.waterlevel"
 
 ErrorHandler g_errors;
+std::mutex g_mqttMutex;
+std::condition_variable g_mqttCV;
 
 void eternalBlinkAndDie(int pin, int millihz)
 {
@@ -120,7 +124,8 @@ void decodeStatusResponse(std::string which, std::string &response)
             if (Configuration::instance()->m_mqtt->is_connected()) {
                 j["aquarium"]["device"]["ph"]["voltage"] = response.substr(pos + 1);
                 pubmsg = mqtt::make_message("aquarium/device", j.dump());
-                Configuration::instance()->m_mqtt->publish(pubmsg);
+                if (Configuration::instance()->m_mqttConnected)
+                    Configuration::instance()->m_mqtt->publish(pubmsg);
             }
             Configuration::instance()->m_phVoltage = response.substr(pos + 1);
         }
@@ -128,7 +133,8 @@ void decodeStatusResponse(std::string which, std::string &response)
             if (Configuration::instance()->m_mqtt->is_connected()) {
                 j["aquarium"]["device"]["dissolvedoxygen"]["version"] = response.substr(pos + 1);
                 pubmsg = mqtt::make_message("aquarium/device", j.dump());
-                Configuration::instance()->m_mqtt->publish(pubmsg);
+                if (Configuration::instance()->m_mqttConnected)
+                    Configuration::instance()->m_mqtt->publish(pubmsg);
             }
             Configuration::instance()->m_o2Voltage = response.substr(pos + 1);
         }
@@ -302,7 +308,8 @@ void sendResultData()
     j["aquarium"]["oxygen"] = Configuration::instance()->m_oxygen->getDO();
     
     pubmsg = mqtt::make_message("aquarium/data", j.dump());
-    Configuration::instance()->m_mqtt->publish(pubmsg);
+    if (Configuration::instance()->m_mqttConnected)
+        Configuration::instance()->m_mqtt->publish(pubmsg);
 }
 
 void setTempCompensation()
@@ -340,7 +347,8 @@ void sendTempProbeIdentification()
         it++;
     }
     pubmsg = mqtt::make_message("aquarium/devices", j.dump());
-    Configuration::instance()->m_mqtt->publish(pubmsg);
+    if (Configuration::instance()->m_mqttConnected)
+        Configuration::instance()->m_mqtt->publish(pubmsg);
 }
 
 /*
@@ -378,6 +386,8 @@ void mqttConnectionLost()
 void mqttConnected()
 {
     std::cout << "MQTT connected!" << std::endl;
+    Configuration::instance()->m_mqttConnected = true;
+    g_mqttCV.notify_one();
 }
 
 void mainloop()
@@ -530,6 +540,8 @@ int main(int argc, char *argv[])
 		std::cerr << "\nERROR: Unable to connect to MQTT server: '" << Configuration::instance()->m_mqttServer << "'" << std::endl;
 		exit(-3);
 	}
+    std::unique_lock<std::mutex> lk(g_mqttMutex);
+    g_mqttCV.wait(lk, []{return true;});
 
     if (Configuration::instance()->m_frEnabled) {
         GpioInterrupt::instance()->addPin(Configuration::instance()->m_flowRatePin);
