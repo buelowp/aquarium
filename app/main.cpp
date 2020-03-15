@@ -343,8 +343,8 @@ void sendTempProbeIdentification()
     auto it = devices.begin();
     
     while (it != devices.end()) {
-        j["aquarium"]["device"]["ds18b20"][std::to_string(index)]["name"] = it->second;
-        j["aquarium"]["device"]["ds18b20"][std::to_string(index)]["device"] = it->first;
+        j["aquarium"]["ds18b20"][std::to_string(index)]["serial"] = it->first;
+        j["aquarium"]["ds18b20"][std::to_string(index)]["name"] = it->second;
         it++;
         index++;
     }
@@ -376,6 +376,7 @@ void nameTempProbe(std::string json)
 
 void mqttIncomingMessage(std::string topic, std::string message)
 {
+    std::cout << __FUNCTION__ << ": Handing topic " << topic << std::endl;
     if (topic == "aquarium/ds18b20/name") {
         nameTempProbe(message);
     }
