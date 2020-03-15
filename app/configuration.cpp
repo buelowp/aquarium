@@ -122,7 +122,7 @@ bool Configuration::readConfigFile()
     std::string localId;
     std::string serial;
     std::string name;
-    const char *debug = nullptr;
+    std::string debug;
     std::map<std::string, std::string> tempDevices;
     
     m_temp = new Temperature();
@@ -280,12 +280,12 @@ bool Configuration::readConfigFile()
         }
 
         if (root.exists("phsensor_address")) {
-            root.lookupValue("phsensor_address", m_o2SensorAddress);
+            root.lookupValue("phsensor_address", m_phSensorAddress);
             syslog(LOG_INFO, "PH device on i2c address %x", m_phSensorAddress);
             fprintf(stderr, "PH device on i2c address %x\n", m_phSensorAddress);
         }
         else {
-            m_o2SensorAddress = 0;
+            m_phSensorAddress = 0;
             syslog(LOG_INFO, "PH device disabled");
             fprintf(stderr, "PH device disabled\n");
         }
@@ -311,39 +311,51 @@ bool Configuration::readConfigFile()
             syslog(LOG_INFO, "Conductivity sensor disabled");
             fprintf(stderr, "Conductivity sensor disabled\n");
         }
-        
-        if (root.exists("debug")) {
-            root.lookupValue("debug", debug);
-            if (cisCompare(debug, "INFO"))
-                setlogmask(LOG_UPTO (LOG_INFO));
-            else if (cisCompare(debug, "WARNING"))
+
+        try {
+            if (root.exists("debug")) {
+                root.lookupValue("debug", debug);
+                if (cisCompare(debug, "INFO"))
+                    setlogmask(LOG_UPTO (LOG_INFO));
+                else if (cisCompare(debug, "WARNING"))
+                    setlogmask(LOG_UPTO (LOG_WARNING));
+                else if (cisCompare(debug, "ERROR"))
+                    setlogmask(LOG_UPTO (LOG_ERR));
+            }
+            else {
                 setlogmask(LOG_UPTO (LOG_WARNING));
-            else if (cisCompare(debug, "ERROR"))
-                setlogmask(LOG_UPTO (LOG_ERR));
-        }
-        else {
-            setlogmask(LOG_UPTO (LOG_WARNING));
-        }
-        
-        if (root.exists("ds18b20")) {
-            const libconfig::Setting &probe = root["ds18b20"];
-            for (int i = 0; i < probe.getLength(); i++) {
-                probe.lookupValue("device", serial);
-                probe.lookupValue("name", name);
-                
-                auto device = tempDevices.find(serial);
-                if (device != tempDevices.end()) {
-                    m_temp->setNameForDevice(serial, name);
-                }
-                else { // TODO: Figure out how to report this as an error!
-                    syslog(LOG_WARNING, "DS18B20 probe %s in config, but not connected...", serial.c_str());
-                    fprintf(stderr, "DS18B20 probe %s in config, but not connected...\n", serial.c_str());
-                }
             }
         }
-        else {
-            if (tempDevices.size())
-                addArrayEntry("ds18b20", tempDevices);
+        catch (libconfig::SettingTypeException &e) {
+            syslog(LOG_ERR, "SettingTypeException: %s", e.what());
+            fprintf(stderr, "SettingTypeException: %s", e.what());
+        }
+        
+        try {
+            if (root.exists("ds18b20")) {
+                const libconfig::Setting &probe = root["ds18b20"];
+                for (int i = 0; i < probe.getLength(); i++) {
+                    probe.lookupValue("device", serial);
+                    probe.lookupValue("name", name);
+                    
+                    auto device = tempDevices.find(serial);
+                    if (device != tempDevices.end()) {
+                        m_temp->setNameForDevice(serial, name);
+                    }
+                    else { // TODO: Figure out how to report this as an error!
+                        syslog(LOG_WARNING, "DS18B20 probe %s in config, but not connected...", serial.c_str());
+                        fprintf(stderr, "DS18B20 probe %s in config, but not connected...\n", serial.c_str());
+                    }
+                }
+            }
+            else {
+                if (tempDevices.size())
+                    addArrayEntry("ds18b20", tempDevices);
+            }
+        }
+        catch (libconfig::SettingException &e) {
+            syslog(LOG_ERR, "Cannot update ds18b20 array: SettingTypeException: %s", e.what());
+            fprintf(stderr, "Cannot update ds18b20 array: SettingTypeException: %s", e.what());
         }
             
     }
