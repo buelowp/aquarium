@@ -360,7 +360,7 @@ void nameTempProbe(std::string json)
             value << it.value();
             entry[key.str()] = value.str();
         }
-        Configuration::instance()->addArrayEntry(std::string("ds18b20"), entry);
+        Configuration::instance()->addArray(std::string("ds18b20"), entry);
     }
 }
 

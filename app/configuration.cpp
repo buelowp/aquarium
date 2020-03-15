@@ -107,6 +107,8 @@ bool Configuration::updateArray(std::string array, std::map<std::string, std::st
     if (newEntries.size() > 0) {
         addArray(array, newEntries);
     }
+    
+    return true;
 }
 
 bool Configuration::addArray(std::string array, std::map<std::string, std::string> &entry)
