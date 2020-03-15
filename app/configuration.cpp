@@ -44,6 +44,7 @@ void Configuration::setConfigFile(std::string file)
 bool Configuration::updateArray(std::string array, std::map<std::string, std::string> &entry)
 {
     libconfig::Config config;
+    std::map<std::string, std::string> newEntries;
     
     try {
         config.readFile(m_configFile.c_str());
@@ -64,10 +65,10 @@ bool Configuration::updateArray(std::string array, std::map<std::string, std::st
         return false;
     }
 
-    // TODO: Add the ability to insert a new entry if the map is larger than what's in the array
     try {
         libconfig::Setting &arrayEntry = root[array.c_str()];
         for (const auto& [key, value] : entry) {
+            bool found = false;
             for (int i = 0; i < arrayEntry.getLength(); i++) {
                 const libconfig::Setting &device = arrayEntry[i];
                 std::string serial;
@@ -80,7 +81,11 @@ bool Configuration::updateArray(std::string array, std::map<std::string, std::st
                 if (serial == key) {
                     device["device"] = serial;
                     device["name"] = value;
+                    found = true;
                 }
+            }
+            if (!found) {
+                newEntries[key] = value;
             }
         }
     }
@@ -96,6 +101,11 @@ bool Configuration::updateArray(std::string array, std::map<std::string, std::st
     catch(const libconfig::FileIOException &fioex) {
         std::cerr << "I/O error while writing file: " << m_configFile << std::endl;
         return false;
+    }
+    
+    // Must do this last, or we'll read/write the file while another process is reading/writing it
+    if (newEntries.size() > 0) {
+        addArray(array, newEntries);
     }
 }
 
