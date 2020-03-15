@@ -341,6 +341,10 @@ bool Configuration::readConfigFile()
                 }
             }
         }
+        else {
+            if (tempDevices.size())
+                addArrayEntry("ds18b20", tempDevices);
+        }
             
     }
     catch (libconfig::SettingNotFoundException &e) {
