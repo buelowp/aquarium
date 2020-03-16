@@ -70,6 +70,7 @@
 ErrorHandler g_errors;
 std::mutex g_mqttMutex;
 std::condition_variable g_mqttCV;
+bool g_finished;
 
 void eternalBlinkAndDie(int pin, int millihz)
 {
@@ -343,8 +344,8 @@ void sendTempProbeIdentification()
     auto it = devices.begin();
     
     while (it != devices.end()) {
-        j["aquarium"]["ds18b20"][std::to_string(index)]["serial"] = it->first;
-        j["aquarium"]["ds18b20"][std::to_string(index)]["name"] = it->second;
+        j["aquarium"]["device"]["ds18b20"][std::to_string(index)]["serial"] = it->first;
+        j["aquarium"]["device"]["ds18b20"][std::to_string(index)]["name"] = it->second;
         it++;
         index++;
     }
@@ -354,13 +355,13 @@ void sendTempProbeIdentification()
 }
 
 /*
- * { "aquarium":{"device":[{"serial":"name"},{"serial":"name"}]}}
+ * {"ds18b20":[{"serial":"name"},{"serial":"name"}]}}
  */
 void nameTempProbe(std::string json)
 {
     std::map<std::string, std::string> entry;
     auto j = nlohmann::json::parse(json);
-    auto device = j.find("device");
+    auto device = j.find("ds18b20");
     
     if (device != j.end()) {
         for (auto it : device->items()) {
@@ -377,7 +378,7 @@ void nameTempProbe(std::string json)
 void mqttIncomingMessage(std::string topic, std::string message)
 {
     std::cout << __FUNCTION__ << ": Handing topic " << topic << std::endl;
-    if (topic == "aquarium/ds18b20/name") {
+    if (topic == "aquarium/set/ds18b20") {
         nameTempProbe(message);
     }
 }
@@ -390,7 +391,8 @@ void mqttConnected()
 {
     std::cout << "MQTT connected!" << std::endl;
     Configuration::instance()->m_mqttConnected = true;
-    g_mqttCV.notify_one();
+    g_finished = true;
+    g_mqttCV.notify_all();
 }
 
 void mainloop()
@@ -399,6 +401,9 @@ void mainloop()
     ITimer phUpdate;
     ITimer sendUpdate;
     ITimer tempCompensation;
+    
+    Configuration::instance()->m_mqtt->start_consuming();
+    Configuration::instance()->m_mqtt->subscribe("aquarium/set/#", 1);
     
     auto phfunc = []() { Configuration::instance()->m_ph->sendReadCommand(900); };
     auto dofunc = []() { Configuration::instance()->m_oxygen->sendReadCommand(600); };
@@ -494,6 +499,8 @@ int main(int argc, char *argv[])
 {
     std::string progname = basename(argv[0]);
     
+    g_finished = false;
+    
     openlog(progname.c_str(), LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
     
     syslog(LOG_NOTICE, "Application startup");
@@ -544,8 +551,8 @@ int main(int argc, char *argv[])
 		exit(-3);
 	}
     std::unique_lock<std::mutex> lk(g_mqttMutex);
-    g_mqttCV.wait(lk, []{return true;});
-
+    g_mqttCV.wait(lk, []{return g_finished;});
+    
     if (Configuration::instance()->m_frEnabled) {
         GpioInterrupt::instance()->addPin(Configuration::instance()->m_flowRatePin);
         GpioInterrupt::instance()->setPinCallback(Configuration::instance()->m_flowRatePin, flowRateCallback);
