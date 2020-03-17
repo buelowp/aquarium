@@ -344,8 +344,8 @@ void sendTempProbeIdentification()
     auto it = devices.begin();
     
     while (it != devices.end()) {
-        j["aquarium"]["ds18b20"][std::to_string(index)]["serial"] = it->first;
-        j["aquarium"]["ds18b20"][std::to_string(index)]["name"] = it->second;
+        j["aquarium"]["device"]["ds18b20"][std::to_string(index)]["serial"] = it->first;
+        j["aquarium"]["device"]["ds18b20"][std::to_string(index)]["name"] = it->second;
         it++;
         index++;
     }
@@ -499,6 +499,8 @@ bool parse_args(int argc, char **argv)
 int main(int argc, char *argv[])
 {
     std::string progname = basename(argv[0]);
+    g_finished = false;
+    
     g_finished = false;
     
     openlog(progname.c_str(), LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
