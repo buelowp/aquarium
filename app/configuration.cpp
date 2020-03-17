@@ -68,6 +68,7 @@ bool Configuration::updateArray(std::string array, std::map<std::string, std::st
     try {
         libconfig::Setting &arrayEntry = root[array.c_str()];
         for (const auto& [key, value] : entry) {
+            std::cout << __FUNCTION__ << ": Searching for " << key << ":" << value << std::endl;
             bool found = false;
             for (int i = 0; i < arrayEntry.getLength(); i++) {
                 const libconfig::Setting &device = arrayEntry[i];
@@ -79,7 +80,7 @@ bool Configuration::updateArray(std::string array, std::map<std::string, std::st
                 }
                 
                 if (serial == key) {
-                    device["device"] = serial;
+                    device["device"] = key;
                     device["name"] = value;
                     found = true;
                 }
