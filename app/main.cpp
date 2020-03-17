@@ -294,8 +294,8 @@ void sendResultData()
         auto it = devices.begin();
         while (it != devices.end()) {
             double c = Configuration::instance()->m_temp->getTemperatureByDevice(it->first);
-            j["aquarium"]["temperature"][it->first]["celsius"] = c;
-            j["aquarium"]["temperature"][it->first]["farenheit"] = Configuration::instance()->m_temp->convertToFarenheit(c);
+            j["aquarium"]["temperature"][Configuration::instance()->m_temp->deviceName(it->first)]["celsius"] = c;
+            j["aquarium"]["temperature"][Configuration::instance()->m_temp->deviceName(it->first)]["farenheit"] = Configuration::instance()->m_temp->convertToFarenheit(c);
             it++;
         }
     }

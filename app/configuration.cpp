@@ -422,9 +422,11 @@ bool Configuration::readConfigFile()
                     const libconfig::Setting &device = probe[i];
                     device.lookupValue("device", serial);
                     device.lookupValue("name", name);
+                    std::cout << __FUNCTION__ << ": Searching for probe " << serial << " in discovered device map" << std::endl;
                     
                     auto found = tempDevices.find(serial);
                     if (found != tempDevices.end()) {
+                        std::cout << __FUNCTION__ << ": Setting temp device " << serial << " to " << name << std::endl;
                         m_temp->setNameForDevice(serial, name);
                     }
                     else { // TODO: Figure out how to report this as an error!

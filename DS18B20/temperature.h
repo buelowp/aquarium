@@ -55,6 +55,7 @@ public:
     std::string name(std::string device) { return m_devices[device]; }
     std::map<std::string, std::string> devices() { return m_devices; }
     bool setNameForDevice(std::string name, std::string device);
+    std::string deviceName(std::string);
     
 private:
     double getTemperature(std::string device);

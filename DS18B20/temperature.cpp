@@ -52,7 +52,7 @@ Temperature::Temperature()
     std::cout << __FUNCTION__ << ": Found " << m_devices.size() << " devices" << std::endl;
 }
 
-Temperature::Temperature(std::string name, std::string device)
+Temperature::Temperature(std::string device, std::string name)
 {
     m_devices[device] = name;
     m_enabled = true;
@@ -60,6 +60,17 @@ Temperature::Temperature(std::string name, std::string device)
 
 Temperature::~Temperature()
 {
+}
+
+std::string Temperature::deviceName(std::string device)
+{
+    std::string d;
+    
+    if (m_devices.find(device) != m_devices.end()) {
+        return m_devices[device];
+    }
+    
+    return d;
 }
 
 double Temperature::getTemperatureByName(std::string name)
