@@ -386,6 +386,7 @@ void mqttIncomingMessage(std::string topic, std::string message)
 
 void mqttConnectionLost()
 {
+    std::cout << "MQTT disconnected" << std::endl;
 }
 
 void mqttConnected()
@@ -545,13 +546,13 @@ int main(int argc, char *argv[])
     Configuration::instance()->m_mqtt = &mqtt;
 
     try {
-		std::cout << "Connecting to the MQTT server..." << std::flush;
-		mqtt.connect(connopts, nullptr, callback);
-	}
-	catch (const mqtt::exception&) {
-		std::cerr << "\nERROR: Unable to connect to MQTT server: '" << Configuration::instance()->m_mqttServer << "'" << std::endl;
-		exit(-3);
-	}
+        std::cout << "Connecting to the MQTT server..." << std::flush;
+        mqtt.connect(connopts, nullptr, callback);
+    }
+    catch (const mqtt::exception&) {
+	std::cerr << "\nERROR: Unable to connect to MQTT server: '" << Configuration::instance()->m_mqttServer << "'" << std::endl;
+	exit(-3);
+    }
     std::unique_lock<std::mutex> lk(g_mqttMutex);
     g_mqttCV.wait(lk, []{return g_finished;});
 
