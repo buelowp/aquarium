@@ -40,17 +40,19 @@ Temperature::Temperature()
     for (int i = 0; i < v.size(); i++) {
         if (v.at(i).find("28-") != std::string::npos) {
             m_devices[v.at(i)] = v.at(i);
-            syslog(LOG_INFO, "Found 1-wire device %s", v.at(i).c_str());
-            std::cout << "Found 1-wire device " << v.at(i).c_str() << std::endl;
+            syslog(LOG_INFO, "Found DS18B20 device %s", v.at(i).c_str());
+            std::cout << "Found DS18B20 device " << v.at(i).c_str() << std::endl;
         }
     }
     if (m_devices.size() > 0)
         m_enabled = true;
     else
         syslog(LOG_ERR, "No 1-wire devices found");
+    
+    std::cout << __FUNCTION__ << ": Found " << m_devices.size() << " devices" << std::endl;
 }
 
-Temperature::Temperature(std::string name, std::string device)
+Temperature::Temperature(std::string device, std::string name)
 {
     m_devices[device] = name;
     m_enabled = true;
@@ -58,6 +60,17 @@ Temperature::Temperature(std::string name, std::string device)
 
 Temperature::~Temperature()
 {
+}
+
+std::string Temperature::deviceName(std::string device)
+{
+    std::string d;
+    
+    if (m_devices.find(device) != m_devices.end()) {
+        return m_devices[device];
+    }
+    
+    return d;
 }
 
 double Temperature::getTemperatureByName(std::string name)

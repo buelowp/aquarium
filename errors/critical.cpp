@@ -60,7 +60,7 @@ void Critical::cancel()
     j["aquarium"]["error"]["handle"] = m_handle;
     j["aquarium"]["error"]["timeout"] = m_timeout;
 
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 0);
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_redLed, 0);
 
     pubmsg = mqtt::make_message("aquarium/error", j.dump());
     Configuration::instance()->m_mqtt->publish(pubmsg);
@@ -76,7 +76,7 @@ void Critical::activate()
     j["aquarium"]["error"]["handle"] = m_handle;
     j["aquarium"]["error"]["timeout"] = m_timeout;
     
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 1);
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_redLed, 1);
 
     pubmsg = mqtt::make_message("aquarium/error", j.dump());
     Configuration::instance()->m_mqtt->publish(pubmsg);

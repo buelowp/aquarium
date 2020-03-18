@@ -47,8 +47,6 @@ FlowRate& FlowRate::operator++(int)
 
 void FlowRate::run()
 {
-    int count = 0;
-    
     m_enabled = true;
     while (m_enabled) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));

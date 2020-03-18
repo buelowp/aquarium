@@ -31,7 +31,7 @@
 #include <memory>
 #include <functional>
 
-#include <libconfig.h>
+#include <libconfig.h++>
 #include <syslog.h>
 
 #include <adaio.h>
@@ -61,6 +61,9 @@ public:
     bool readConfigFile();
     void setConfigFile(std::string);
     unsigned int nextHandle() { return m_handle++; }
+    bool setValue(std::string, std::string);
+    bool addArray(std::string, std::map<std::string, std::string>&);
+    bool updateArray(std::string, std::map<std::string, std::string>&);
     
     AdafruitIO *m_aio;
     mqtt::connect_options m_mqttConnectionOptions;
@@ -70,6 +73,7 @@ public:
     Temperature *m_temp;
     FlowRate *m_fr;
     MCP3008 *m_adc;
+    std::vector<std::string> m_invalidTempDeviceInConfig;
     std::string m_aioServer;
     std::string m_aioUserName;
     std::string m_aioKey;
@@ -88,14 +92,15 @@ public:
     bool m_aioConnected;
     bool m_mqttConnected;
     bool m_aioEnabled;
-    bool m_mqttEnabled;
+    bool m_newTempDeviceFound;
     int m_frEnabled;
-    int m_o2sensor_address;
-    int m_phsensor_address;
+    int m_o2SensorAddress;
+    int m_phSensorAddress;
+    int m_ecSensorAddress;
     int m_onewirepin;
-    int m_red_led;
-    int m_yellow_led;
-    int m_green_led;
+    int m_redLed;
+    int m_yellowLed;
+    int m_greenLed;
     int m_aioPort;
     int m_flowRatePin;
     int m_mqttPort;

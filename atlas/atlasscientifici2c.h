@@ -66,6 +66,7 @@ public:
     bool sendInfoCommand();
     bool sendReadCommand(int);
     bool sendStatusCommand();
+    bool enabled() { return m_enabled; }
     
     virtual void response(int, uint8_t*, int) = 0;
 
@@ -74,8 +75,10 @@ public:
     uint8_t m_device;
     int m_lastCommand;
     std::string m_version;
-    bool m_enabled;
     std::vector<std::string> split(const std::string& s, char delimiter);
+    
+protected:
+    bool m_enabled;
     
 private:
     void readValue();

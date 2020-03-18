@@ -41,6 +41,9 @@ void PotentialHydrogen::response(int cmd, uint8_t *buffer, int size)
     std::vector<std::string> result;
     std::string ph("pH");
     
+    if (!m_enabled)
+        return;
+    
     for (int i = 0; i < size; i++) {
         r += static_cast<char>(buffer[i]);
     }
@@ -88,6 +91,9 @@ void PotentialHydrogen::response(int cmd, uint8_t *buffer, int size)
 
 void PotentialHydrogen::getLastResponse(std::string &r)
 {
+    if (!m_enabled)
+        return;
+    
     r.clear();
     
     for (int i = 0; i < m_lastResponse.size(); i++) {
@@ -97,6 +103,9 @@ void PotentialHydrogen::getLastResponse(std::string &r)
 
 bool PotentialHydrogen::calibrate(int cmd)
 {
+    if (!m_enabled)
+        return false;
+    
     std::stringstream ss;
     ss << std::fixed << std::setprecision(3) << m_lastPHValue;
     std::string val = ss.str();
@@ -111,6 +120,9 @@ bool PotentialHydrogen::calibrate(int cmd)
 
 void PotentialHydrogen::printBuffer(std::vector<uint8_t> &packet)
 {
+    if (!m_enabled)
+        return;
+    
     std::ios oldState(nullptr);
     
     oldState.copyfmt(std::cout);
@@ -125,6 +137,9 @@ void PotentialHydrogen::printBuffer(std::vector<uint8_t> &packet)
 bool PotentialHydrogen::calibrate(int cmd, uint8_t buf[], int size)
 {
     std::vector<uint8_t> payload;
+    
+    if (!m_enabled)
+        return false;
     
     payload.push_back('C');
     payload.push_back('a');
@@ -192,6 +207,9 @@ void PotentialHydrogen::slope()
 {
     std::vector<uint8_t> payload;
     
+    if (!m_enabled)
+        return;
+    
     payload.push_back('S');
     payload.push_back('l');
     payload.push_back('o');
@@ -204,6 +222,9 @@ void PotentialHydrogen::slope()
 
 void PotentialHydrogen::setTempCompensation(double temp)
 {
+    if (!m_enabled)
+        return;
+    
     std::stringstream ss;
     ss << std::fixed << std::setprecision(3) << temp;
     std::string val = ss.str();
@@ -219,6 +240,9 @@ void PotentialHydrogen::setTempCompensation(uint8_t *buf, int size)
 {
     std::vector<uint8_t> payload;
     
+    if (!m_enabled)
+        return;
+    
     payload.push_back('T');
     payload.push_back(',');
     
@@ -230,6 +254,9 @@ void PotentialHydrogen::setTempCompensation(uint8_t *buf, int size)
 
 void PotentialHydrogen::setTempCompensationAndRead(double temp)
 {
+    if (!m_enabled)
+        return;
+    
     std::stringstream ss;
     ss << std::fixed << std::setprecision(3) << temp;
     std::string val = ss.str();
@@ -245,6 +272,9 @@ void PotentialHydrogen::setTempCompensationAndRead(uint8_t *buf, int size)
 {
     std::vector<uint8_t> payload;
     
+    if (!m_enabled)
+        return;
+    
     payload.push_back('R');
     payload.push_back('T');
     payload.push_back(',');
@@ -259,6 +289,9 @@ void PotentialHydrogen::getTempCompensation()
 {
     std::vector<uint8_t> payload;
     
+    if (!m_enabled)
+        return;
+    
     payload.push_back('T');
     payload.push_back(',');
     payload.push_back('?');
@@ -270,6 +303,9 @@ void PotentialHydrogen::handleCalibration(std::string response)
 {
     std::vector<std::string> result;
     std::string cal("?CAL");
+    
+    if (!m_enabled)
+        return;
     
     result = split(response, ',');
     
@@ -304,6 +340,9 @@ void PotentialHydrogen::handleStatusResponse(std::string response)
     std::vector<std::string> results = split(response, ',');
     std::string status("?STATUS");
     
+    if (!m_enabled)
+        return;
+    
     if (results.size() == 3) {
         if (results[0] == status) {
             try {
@@ -330,6 +369,9 @@ void PotentialHydrogen::handleStatusResponse(std::string response)
 
 void PotentialHydrogen::handleReadResponse(std::string &response)
 {
+    if (!m_enabled)
+        return;
+    
     response.erase(response.begin());
     try {
         m_lastPHValue = std::stod(response);

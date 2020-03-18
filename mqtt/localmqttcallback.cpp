@@ -56,6 +56,7 @@ void LocalMQTTCallback::delivery_complete(mqtt::delivery_token_ptr tok)
 
 void LocalMQTTCallback::message_arrived(mqtt::const_message_ptr msg)
 {
+    std::cout << __FUNCTION__ << ": Incoming message for topic " << msg->get_topic() << std::endl;
     try {
         m_messageCallback(msg->get_topic(), msg->get_payload_str());
     }

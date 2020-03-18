@@ -30,6 +30,9 @@
 #include <cstring>
 #include <iomanip>
 #include <ctime>
+#include <sstream>
+#include <mutex>
+#include <condition_variable>
 
 #include <gpiointerruptpp.h>
 #include <adaio.h>
@@ -65,6 +68,9 @@
 #define AIO_LEVEL_FEED      "pbuelow/feeds/aquarium.waterlevel"
 
 ErrorHandler g_errors;
+std::mutex g_mqttMutex;
+std::condition_variable g_mqttCV;
+bool g_finished;
 
 void eternalBlinkAndDie(int pin, int millihz)
 {
@@ -79,19 +85,19 @@ void eternalBlinkAndDie(int pin, int millihz)
 
 void initializeLeds()
 {
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_green_led, 1);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellow_led, 0);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 0);
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_greenLed, 1);
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellowLed, 0);
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_redLed, 0);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_green_led, 0);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellow_led, 1);
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_greenLed, 0);
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellowLed, 1);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellow_led, 0);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 1);
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellowLed, 0);
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_redLed, 1);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_red_led, 0);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_green_led, 1);
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_redLed, 0);
+    GpioInterrupt::instance()->setValue(Configuration::instance()->m_greenLed, 1);
 }
 
 bool cisCompare(const std::string & str1, const std::string &str2)
@@ -119,7 +125,8 @@ void decodeStatusResponse(std::string which, std::string &response)
             if (Configuration::instance()->m_mqtt->is_connected()) {
                 j["aquarium"]["device"]["ph"]["voltage"] = response.substr(pos + 1);
                 pubmsg = mqtt::make_message("aquarium/device", j.dump());
-                Configuration::instance()->m_mqtt->publish(pubmsg);
+                if (Configuration::instance()->m_mqttConnected)
+                    Configuration::instance()->m_mqtt->publish(pubmsg);
             }
             Configuration::instance()->m_phVoltage = response.substr(pos + 1);
         }
@@ -127,7 +134,8 @@ void decodeStatusResponse(std::string which, std::string &response)
             if (Configuration::instance()->m_mqtt->is_connected()) {
                 j["aquarium"]["device"]["dissolvedoxygen"]["version"] = response.substr(pos + 1);
                 pubmsg = mqtt::make_message("aquarium/device", j.dump());
-                Configuration::instance()->m_mqtt->publish(pubmsg);
+                if (Configuration::instance()->m_mqttConnected)
+                    Configuration::instance()->m_mqtt->publish(pubmsg);
             }
             Configuration::instance()->m_o2Voltage = response.substr(pos + 1);
         }
@@ -286,8 +294,8 @@ void sendResultData()
         auto it = devices.begin();
         while (it != devices.end()) {
             double c = Configuration::instance()->m_temp->getTemperatureByDevice(it->first);
-            j["aquarium"]["temperature"][it->first]["celsius"] = c;
-            j["aquarium"]["temperature"][it->first]["farenheit"] = Configuration::instance()->m_temp->convertToFarenheit(c);
+            j["aquarium"]["temperature"][Configuration::instance()->m_temp->deviceName(it->first)]["celsius"] = c;
+            j["aquarium"]["temperature"][Configuration::instance()->m_temp->deviceName(it->first)]["farenheit"] = Configuration::instance()->m_temp->convertToFarenheit(c);
             it++;
         }
     }
@@ -301,7 +309,8 @@ void sendResultData()
     j["aquarium"]["oxygen"] = Configuration::instance()->m_oxygen->getDO();
     
     pubmsg = mqtt::make_message("aquarium/data", j.dump());
-    Configuration::instance()->m_mqtt->publish(pubmsg);
+    if (Configuration::instance()->m_mqttConnected)
+        Configuration::instance()->m_mqtt->publish(pubmsg);
 }
 
 void setTempCompensation()
@@ -330,20 +339,49 @@ void sendTempProbeIdentification()
     std::map<std::string, std::string> devices = Configuration::instance()->m_temp->devices();
     mqtt::message_ptr pubmsg;
     nlohmann::json j;
+    int index = 1;
 
     auto it = devices.begin();
     
     while (it != devices.end()) {
-        j["aquarium"]["device"]["ds18b20"]["name"] = it->second;
-        j["aquarium"]["device"]["ds18b20"]["device"] = it->first;
+        j["aquarium"]["device"]["ds18b20"][std::to_string(index)]["serial"] = it->first;
+        j["aquarium"]["device"]["ds18b20"][std::to_string(index)]["name"] = it->second;
         it++;
+        index++;
     }
     pubmsg = mqtt::make_message("aquarium/devices", j.dump());
-    Configuration::instance()->m_mqtt->publish(pubmsg);
+    if (Configuration::instance()->m_mqttConnected)
+        Configuration::instance()->m_mqtt->publish(pubmsg);
+}
+
+/*
+ * {"serial":"name"}
+ */
+void nameTempProbe(std::string json)
+{
+    std::map<std::string, std::string> entry;
+    auto j = nlohmann::json::parse(json);
+
+    if (!j.is_null()) {
+        for (auto& el : j.items()) {
+            std::cout << __FUNCTION__ << ": " << el.key() << ":" << el.value() << std::endl;
+            entry[el.key()] = el.value();
+        }
+    }
+    else {
+        std::cout << __FUNCTION__ << ": j is null: " << json << std::endl;
+    }
+    
+    if (entry.size())
+        Configuration::instance()->updateArray(std::string("ds18b20"), entry);
 }
 
 void mqttIncomingMessage(std::string topic, std::string message)
 {
+    std::cout << __FUNCTION__ << ": Handling topic " << topic << std::endl;
+    if (topic == "aquarium/set/ds18b20") {
+        nameTempProbe(message);
+    }
 }
 
 void mqttConnectionLost()
@@ -353,7 +391,10 @@ void mqttConnectionLost()
 
 void mqttConnected()
 {
-    std::cout << "MQTT connected" << std::endl;
+    std::cout << "MQTT connected!" << std::endl;
+    Configuration::instance()->m_mqttConnected = true;
+    g_finished = true;
+    g_mqttCV.notify_all();
 }
 
 void mainloop()
@@ -363,6 +404,9 @@ void mainloop()
     ITimer sendUpdate;
     ITimer tempCompensation;
     
+    Configuration::instance()->m_mqtt->start_consuming();
+    Configuration::instance()->m_mqtt->subscribe("aquarium/set/#", 1);
+
     auto phfunc = []() { Configuration::instance()->m_ph->sendReadCommand(900); };
     auto dofunc = []() { Configuration::instance()->m_oxygen->sendReadCommand(600); };
     auto updateFunc = []() { sendResultData(); };
@@ -383,30 +427,6 @@ void mainloop()
     phUpdate.stop();
     sendUpdate.stop();
     tempCompensation.stop();
-}
-
-
-bool testNetwork(std::string server)
-{
-    int count = 0;
-    bool activeWarning = false;
-    unsigned int handle;
-    std::string ping = "ping " + server;
-    
-    while (system(ping.c_str())) {
-        if (!activeWarning) {
-            handle = g_errors.warning(Configuration::instance()->nextHandle(), "No Network");
-            activeWarning = true;
-        }
-        if (count++ == 300) {
-            syslog(LOG_ERR, "Network is not coming up, giving up...");
-            return false;
-        }
-        syslog(LOG_ERR, "Network does not seem to be available, pending...");
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-    g_errors.clearWarning(handle);
-    return true;
 }
 
 void usage(const char *name)
@@ -480,8 +500,10 @@ bool parse_args(int argc, char **argv)
 int main(int argc, char *argv[])
 {
     std::string progname = basename(argv[0]);
+    g_finished = false;
     
-    setlogmask(LOG_UPTO (LOG_INFO));
+    g_finished = false;
+    
     openlog(progname.c_str(), LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
     
     syslog(LOG_NOTICE, "Application startup");
@@ -499,13 +521,13 @@ int main(int argc, char *argv[])
         exit(-2);
     }
 
-    if (!GpioInterrupt::instance()->addPin(Configuration::instance()->m_green_led, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
+    if (!GpioInterrupt::instance()->addPin(Configuration::instance()->m_greenLed, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
         syslog(LOG_ERR, "Unable to open GPIO for green led");
     
-    if (!GpioInterrupt::instance()->addPin(Configuration::instance()->m_yellow_led, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
+    if (!GpioInterrupt::instance()->addPin(Configuration::instance()->m_yellowLed, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
         syslog(LOG_ERR, "Unable to open GPIO for yellow led");
 
-    if (!GpioInterrupt::instance()->addPin(Configuration::instance()->m_red_led, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
+    if (!GpioInterrupt::instance()->addPin(Configuration::instance()->m_redLed, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
         syslog(LOG_ERR, "Unable to open GPIO for red led");
 
     initializeLeds();
@@ -524,26 +546,20 @@ int main(int argc, char *argv[])
     Configuration::instance()->m_mqtt = &mqtt;
 
     try {
-		std::cout << "Connecting to the MQTT server..." << std::flush;
-		mqtt.connect(connopts, nullptr, callback);
-	}
-	catch (const mqtt::exception&) {
-		std::cerr << "\nERROR: Unable to connect to MQTT server: '" << Configuration::instance()->m_mqttServer << "'" << std::endl;
-		exit(-3);
-	}
-
-    // We will assume that if we can get to our local MQTT instance, we can probably get to AdafruitIO as well
-    /*
-    if (!testNetwork(Configuration::instance()->m_mqttServer)) {
-        syslog(LOG_ERR, "Cannot get to server %s, so we cannot continue", Configuration::instance()->m_mqttServer.c_str());
-        g_errors.fatal(0, "Network Not Available");
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        exit(-3);
+        std::cout << "Connecting to the MQTT server..." << std::flush;
+        mqtt.connect(connopts, nullptr, callback);
     }
-    */
-    
-    GpioInterrupt::instance()->addPin(Configuration::instance()->m_flowRatePin);
-    GpioInterrupt::instance()->setPinCallback(Configuration::instance()->m_flowRatePin, flowRateCallback);
+    catch (const mqtt::exception&) {
+	std::cerr << "\nERROR: Unable to connect to MQTT server: '" << Configuration::instance()->m_mqttServer << "'" << std::endl;
+	exit(-3);
+    }
+    std::unique_lock<std::mutex> lk(g_mqttMutex);
+    g_mqttCV.wait(lk, []{return g_finished;});
+
+    if (Configuration::instance()->m_frEnabled) {
+        GpioInterrupt::instance()->addPin(Configuration::instance()->m_flowRatePin);
+        GpioInterrupt::instance()->setPinCallback(Configuration::instance()->m_flowRatePin, flowRateCallback);
+    }
     
     if (Configuration::instance()->m_aioEnabled)
         Configuration::instance()->m_aio = new AdafruitIO(Configuration::instance()->m_localId, 
