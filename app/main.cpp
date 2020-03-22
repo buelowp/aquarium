@@ -384,9 +384,9 @@ void mqttIncomingMessage(std::string topic, std::string message)
     }
 }
 
-void mqttConnectionLost()
+void mqttConnectionLost(const std::string &cause)
 {
-    std::cout << "MQTT disconnected" << std::endl;
+    std::cout << "MQTT disconnected: " << cause << std::endl;
 }
 
 void mqttConnected()
@@ -395,6 +395,78 @@ void mqttConnected()
     Configuration::instance()->m_mqttConnected = true;
     g_finished = true;
     g_mqttCV.notify_all();
+}
+
+void aioIncomingMessage(std::string topic, std::string message)
+{
+    std::cout << __FUNCTION__ << ": Odd, we shouldn't get messages from AIO" << std::endl;
+}
+
+void aioConnected()
+{
+    std::cout << "AIO connected!" << std::endl;
+    Configuration::instance()->m_aioConnected = true;
+}
+
+void aioConnectionLost(const std::string &cause)
+{
+    std::cout << __FUNCTION__ << ": AIO disconnected: " << cause << std::endl;
+}
+
+bool createLocalMqttConnection()
+{
+    mqtt::connect_options connopts;
+    connopts.set_keep_alive_interval(20);
+	connopts.set_clean_session(true);
+    connopts.set_automatic_reconnect(1, 10);
+
+    mqtt::async_client mqtt(Configuration::instance()->m_mqttServer, Configuration::instance()->m_localId);
+    LocalMQTTCallback callback(mqtt, connopts);
+    callback.setMessageCallback(mqttIncomingMessage);
+    callback.setConnectionLostCallback(mqttConnectionLost);
+    callback.setConnectedCallback(mqttConnected);
+    mqtt.set_callback(callback);
+    Configuration::instance()->m_mqtt = &mqtt;
+
+    try {
+        std::cout << "Connecting to the MQTT server..." << std::flush;
+        mqtt.connect(connopts, nullptr, callback);
+    }
+    catch (const mqtt::exception&) {
+        std::cerr << "\nERROR: Unable to connect to MQTT server: '" << Configuration::instance()->m_mqttServer << "'" << std::endl;
+        return false;
+    }
+    std::unique_lock<std::mutex> lk(g_mqttMutex);
+    g_mqttCV.wait(lk, []{return g_finished;});
+    return true;
+}
+
+bool createAIOMqttConnection()
+{
+    mqtt::connect_options connopts(Configuration::instance()->m_aioUserName, Configuration::instance()->m_aioKey);
+    connopts.set_keep_alive_interval(20);
+	connopts.set_clean_session(true);
+    connopts.set_automatic_reconnect(1, 10);
+
+    mqtt::async_client mqtt(Configuration::instance()->m_aioServer, Configuration::instance()->m_localId);
+    LocalMQTTCallback callback(mqtt, connopts);
+    callback.setMessageCallback(aioIncomingMessage);
+    callback.setConnectionLostCallback(aioConnectionLost);
+    callback.setConnectedCallback(aioConnected);
+    mqtt.set_callback(callback);
+    Configuration::instance()->m_aio = &mqtt;
+
+    try {
+        std::cout << "Connecting to the MQTT server..." << std::flush;
+        mqtt.connect(connopts, nullptr, callback);
+    }
+    catch (const mqtt::exception&) {
+        std::cerr << "\nERROR: Unable to connect to MQTT server: '" << Configuration::instance()->m_mqttServer << "'" << std::endl;
+        return false;
+    }
+    std::unique_lock<std::mutex> lk(g_mqttMutex);
+    g_mqttCV.wait(lk, []{return g_finished;});
+    return true;
 }
 
 void mainloop()
@@ -532,41 +604,13 @@ int main(int argc, char *argv[])
 
     initializeLeds();
 
-    mqtt::connect_options connopts;
-    connopts.set_keep_alive_interval(20);
-	connopts.set_clean_session(true);
-    connopts.set_automatic_reconnect(1, 10);
-
-    mqtt::async_client mqtt(Configuration::instance()->m_mqttServer, Configuration::instance()->m_localId);
-    LocalMQTTCallback callback(mqtt, connopts);
-    callback.setMessageCallback(mqttIncomingMessage);
-    callback.setConnectionLostCallback(mqttConnectionLost);
-    callback.setConnectedCallback(mqttConnected);
-    mqtt.set_callback(callback);
-    Configuration::instance()->m_mqtt = &mqtt;
-
-    try {
-        std::cout << "Connecting to the MQTT server..." << std::flush;
-        mqtt.connect(connopts, nullptr, callback);
-    }
-    catch (const mqtt::exception&) {
-	std::cerr << "\nERROR: Unable to connect to MQTT server: '" << Configuration::instance()->m_mqttServer << "'" << std::endl;
-	exit(-3);
-    }
-    std::unique_lock<std::mutex> lk(g_mqttMutex);
-    g_mqttCV.wait(lk, []{return g_finished;});
-
+    createLocalMqttConnection();
+    createAIOMqttConnection();
+    
     if (Configuration::instance()->m_frEnabled) {
         GpioInterrupt::instance()->addPin(Configuration::instance()->m_flowRatePin);
         GpioInterrupt::instance()->setPinCallback(Configuration::instance()->m_flowRatePin, flowRateCallback);
     }
-    
-    if (Configuration::instance()->m_aioEnabled)
-        Configuration::instance()->m_aio = new AdafruitIO(Configuration::instance()->m_localId, 
-                                                          Configuration::instance()->m_aioServer, 
-                                                          Configuration::instance()->m_aioUserName, 
-                                                          Configuration::instance()->m_aioKey, 
-                                                          Configuration::instance()->m_aioPort);
     
     GpioInterrupt::instance()->start();
     Configuration::instance()->m_oxygen->setCallback(doCallback);

@@ -26,14 +26,14 @@
 #include "localmqttcallback.h"
 
 LocalMQTTCallback::LocalMQTTCallback(mqtt::async_client& cli, mqtt::connect_options& connOpts) : 
-    m_retries(0), m_client(cli), m_clientConnOpts(connOpts), m_subListener("Subscription")
+    m_retries(0), m_client(cli), m_clientConnOpts(connOpts)
 {
 }
 
 void LocalMQTTCallback::connection_lost(const std::string& cause)
 {
     try {
-        m_connectionLostCallback();
+        m_connectionLostCallback(cause);
     }
     catch (std::exception &e) {
         std::cout << __FUNCTION__ << ": Error trying to call the lost connection callback: " << e.what();

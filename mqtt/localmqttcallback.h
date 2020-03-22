@@ -35,15 +35,13 @@
 #include <functional>
 #include <mqtt/async_client.h>
 
-#include "localclientactionlistener.h"
-
 class LocalMQTTCallback : public virtual mqtt::callback, public virtual mqtt::iaction_listener
 {
 public:
     LocalMQTTCallback(mqtt::async_client& cli, mqtt::connect_options& connOpts);
 
     void setMessageCallback(std::function<void(std::string, std::string)> cbk) { m_messageCallback = cbk; }
-    void setConnectionLostCallback(std::function<void()> cbk) { m_connectionLostCallback = cbk; }
+    void setConnectionLostCallback(std::function<void(const std::string&)> cbk) { m_connectionLostCallback = cbk; }
     void setConnectedCallback(std::function<void()> cbk) { m_connectedCallback = cbk; }
     
 private:
@@ -62,7 +60,7 @@ private:
 	void on_success(const mqtt::token& tok) override {}
 
 	std::function<void(std::string, std::string)> m_messageCallback;
-    std::function<void()> m_connectionLostCallback;
+    std::function<void(const std::string&)> m_connectionLostCallback;
     std::function<void()> m_connectedCallback;
     
 	// Counter for the number of connection retries
@@ -71,8 +69,6 @@ private:
 	mqtt::async_client& m_client;
 	// Options to use if we need to reconnect
 	mqtt::connect_options& m_clientConnOpts;
-	// An action listener to display the result of actions.
-	LocalClientActionListener m_subListener;
 };
 
 #endif // MQTTCLIENT_H

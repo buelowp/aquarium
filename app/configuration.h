@@ -34,7 +34,6 @@
 #include <libconfig.h++>
 #include <syslog.h>
 
-#include <adaio.h>
 #include <mqtt/async_client.h>
 
 #include "potentialhydrogen.h"
@@ -65,8 +64,7 @@ public:
     bool addArray(std::string, std::map<std::string, std::string>&);
     bool updateArray(std::string, std::map<std::string, std::string>&);
     
-    AdafruitIO *m_aio;
-    mqtt::connect_options m_mqttConnectionOptions;
+    mqtt::async_client *m_aio;
     mqtt::async_client *m_mqtt;
     DissolvedOxygen *m_oxygen;
     PotentialHydrogen *m_ph;
