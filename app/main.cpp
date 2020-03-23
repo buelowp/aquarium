@@ -443,12 +443,18 @@ bool createLocalMqttConnection()
 
 bool createAIOMqttConnection()
 {
+    std::string server("tcp://");
+    
     mqtt::connect_options connopts(Configuration::instance()->m_aioUserName, Configuration::instance()->m_aioKey);
     connopts.set_keep_alive_interval(20);
 	connopts.set_clean_session(true);
     connopts.set_automatic_reconnect(1, 10);
 
-    mqtt::async_client mqtt(Configuration::instance()->m_aioServer, Configuration::instance()->m_localId);
+    server += Configuration::instance()->m_aioServer;
+    server += ":";
+    server += std::to_string(Configuration::instance()->m_aioPort);
+    
+    mqtt::async_client mqtt(server, Configuration::instance()->m_localId);
     LocalMQTTCallback callback(mqtt, connopts);
     callback.setMessageCallback(aioIncomingMessage);
     callback.setConnectionLostCallback(aioConnectionLost);
