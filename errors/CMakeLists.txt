@@ -9,13 +9,14 @@ set (CMAKE_INCLUDE_CURRENT_DIR ON)
 set (CMAKE_CXX_STANDARD 17)
 set (THREADS_PREFER_PTHREAD_FLAG ON)
 set (CMAKE_THREAD_PREFER_PTHREAD TRUE)
+set (CMAKE_CXX_FLAGS "-fcompare-debug-second")
 
 find_package (Threads REQUIRED)
 
 include_directories (${CMAKE_SOURCE_DIR}/timer 
                     ${CMAKE_SOURCE_DIR}/app 
                     ${CMAKE_SOURCE_DIR}/atlas 
-                    ${CMAKE_SOURCE_DIR}/DS18B20 
+                    ${CMAKE_SOURCE_DIR}/temperature
                     ${CMAKE_SOURCE_DIR}/mcp3008
                     ${CMAKE_SOURCE_DIR}/mqtt)
 
