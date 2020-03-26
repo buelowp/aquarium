@@ -311,6 +311,14 @@ void sendResultData()
     pubmsg = mqtt::make_message("aquarium/data", j.dump());
     if (Configuration::instance()->m_mqttConnected)
         Configuration::instance()->m_mqtt->publish(pubmsg);
+
+    if (Configuration::instance()->m_aioConnected) {
+        nlohmann::json wlj;
+        wlj["value"] = Configuration::instance()->m_adc->reading(Configuration::instance()->m_adcWaterLevelIndex);
+        std::cout << __FUNCTION__ << ": pbuelow/feeds/aquarium.oxygen" << wlj.dump() << std::endl;
+        mqtt::message_ptr wl = mqtt::make_message("pbuelow/feeds/aquarium.oxygen", wlj.dump());
+        Configuration::instance()->m_aio->publish(wl);
+    }
 }
 
 void setTempCompensation()
@@ -387,6 +395,7 @@ void mqttIncomingMessage(std::string topic, std::string message)
 void mqttConnectionLost(const std::string &cause)
 {
     std::cout << "MQTT disconnected: " << cause << std::endl;
+    Configuration::instance()->m_mqttConnected = false;
 }
 
 void mqttConnected()
@@ -411,68 +420,7 @@ void aioConnected()
 void aioConnectionLost(const std::string &cause)
 {
     std::cout << __FUNCTION__ << ": AIO disconnected: " << cause << std::endl;
-}
-
-bool createLocalMqttConnection()
-{
-    mqtt::connect_options connopts;
-    connopts.set_keep_alive_interval(20);
-	connopts.set_clean_session(true);
-    connopts.set_automatic_reconnect(1, 10);
-
-    mqtt::async_client mqtt(Configuration::instance()->m_mqttServer, Configuration::instance()->m_localId);
-    LocalMQTTCallback callback(mqtt, connopts);
-    callback.setMessageCallback(mqttIncomingMessage);
-    callback.setConnectionLostCallback(mqttConnectionLost);
-    callback.setConnectedCallback(mqttConnected);
-    mqtt.set_callback(callback);
-    Configuration::instance()->m_mqtt = &mqtt;
-
-    try {
-        std::cout << "Connecting to the MQTT server..." << std::flush;
-        mqtt.connect(connopts, nullptr, callback);
-    }
-    catch (const mqtt::exception&) {
-        std::cerr << "\nERROR: Unable to connect to MQTT server: '" << Configuration::instance()->m_mqttServer << "'" << std::endl;
-        return false;
-    }
-    std::unique_lock<std::mutex> lk(g_mqttMutex);
-    g_mqttCV.wait(lk, []{return g_finished;});
-    return true;
-}
-
-bool createAIOMqttConnection()
-{
-    std::string server("tcp://");
-    
-    mqtt::connect_options connopts(Configuration::instance()->m_aioUserName, Configuration::instance()->m_aioKey);
-    connopts.set_keep_alive_interval(20);
-	connopts.set_clean_session(true);
-    connopts.set_automatic_reconnect(1, 10);
-
-    server += Configuration::instance()->m_aioServer;
-    server += ":";
-    server += std::to_string(Configuration::instance()->m_aioPort);
-    
-    mqtt::async_client mqtt(server, Configuration::instance()->m_localId);
-    LocalMQTTCallback callback(mqtt, connopts);
-    callback.setMessageCallback(aioIncomingMessage);
-    callback.setConnectionLostCallback(aioConnectionLost);
-    callback.setConnectedCallback(aioConnected);
-    mqtt.set_callback(callback);
-    Configuration::instance()->m_aio = &mqtt;
-
-    try {
-        std::cout << "Connecting to the MQTT server..." << std::flush;
-        mqtt.connect(connopts, nullptr, callback);
-    }
-    catch (const mqtt::exception&) {
-        std::cerr << "\nERROR: Unable to connect to MQTT server: '" << Configuration::instance()->m_mqttServer << "'" << std::endl;
-        return false;
-    }
-    std::unique_lock<std::mutex> lk(g_mqttMutex);
-    g_mqttCV.wait(lk, []{return g_finished;});
-    return true;
+    Configuration::instance()->m_aioEnabled = false;
 }
 
 void mainloop()
@@ -610,9 +558,12 @@ int main(int argc, char *argv[])
 
     initializeLeds();
 
-    createLocalMqttConnection();
-    createAIOMqttConnection();
-    
+    Configuration::instance()->createLocalConnection();
+    Configuration::instance()->createAIOConnection();
+
+    std::unique_lock<std::mutex> lk(g_mqttMutex);
+    g_mqttCV.wait(lk, []{return g_finished;});
+
     if (Configuration::instance()->m_frEnabled) {
         GpioInterrupt::instance()->addPin(Configuration::instance()->m_flowRatePin);
         GpioInterrupt::instance()->setPinCallback(Configuration::instance()->m_flowRatePin, flowRateCallback);

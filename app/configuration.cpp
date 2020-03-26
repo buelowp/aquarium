@@ -197,7 +197,6 @@ bool Configuration::setValue(std::string key, std::string value)
 bool Configuration::readConfigFile()
 {
     libconfig::Config config;
-    std::string localId;
     std::string serial;
     std::string name;
     std::string debug;
@@ -224,7 +223,7 @@ bool Configuration::readConfigFile()
     
     try {
         if (root.exists("mqtt_name")) {
-            root.lookupValue("mqtt_name", localId);
+            root.lookupValue("mqtt_name", m_localId);
         }
         else {
             generateLocalId();
@@ -239,6 +238,7 @@ bool Configuration::readConfigFile()
         else {
             m_aioEnabled = false;
         }
+        
         if (m_aioEnabled) {
             if (root.exists("adafruitio_port")) {
                 root.lookupValue("adafruitio_port", m_aioPort);
@@ -271,7 +271,7 @@ bool Configuration::readConfigFile()
             
             if (m_aioEnabled) {
                 syslog(LOG_INFO, "Access to AdafruiIO is enabled to %s on port %d for user %s", m_aioServer.c_str(), m_aioPort, m_aioUserName.c_str());
-                fprintf(stderr, "Access to AdafruiIO is enabled to %s on port %d for user %s\n", m_aioServer.c_str(), m_aioPort, m_aioUserName.c_str());
+                fprintf(stderr, "Access to AdafruiIO is enabled to %s on port %d for user %s:%s\n", m_aioServer.c_str(), m_aioPort, m_aioUserName.c_str(), m_aioKey.c_str());
             }
         }
         else {
@@ -499,3 +499,76 @@ bool Configuration::cisCompare(const std::string & str1, const std::string &str2
             [](const char c1, const char c2){ return (c1 == c2 || std::toupper(c1) == std::toupper(c2)); }
             ));
 }
+
+bool Configuration::createLocalConnection()
+{
+    std::string server("tcp://");
+
+    mqtt::connect_options connopts(m_aioUserName, m_aioKey);
+    connopts.set_keep_alive_interval(20);
+    connopts.set_clean_session(true);
+    connopts.set_automatic_reconnect(1, 10);
+
+    server += m_mqttServer;
+    server += ":";
+    server += std::to_string(m_mqttPort);
+
+    m_mqtt = new mqtt::async_client(server, m_localId);
+    LocalMQTTCallback callback(m_mqtt, connopts);
+    callback.setMessageCallback(mqttIncomingMessage);
+    callback.setConnectionLostCallback(mqttConnectionLost);
+    callback.setConnectedCallback(mqttConnected);
+    m_mqtt->set_callback(callback);
+
+    try {
+        std::cout << "Connecting to the Local MQTT server at: " << server << std::endl << std::flush;
+        m_mqtt->connect(connopts, nullptr, callback);
+    }
+    catch (const mqtt::exception&) {
+        std::cerr << "\nERROR: Unable to connect to MQTT server: '" << m_mqttServer << "'" << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool Configuration::createAIOConnection()
+{
+    if (!m_aioEnabled)
+        return false;
+
+    std::string server("tcp://");
+
+    mqtt::connect_options connopts(m_aioUserName, m_aioKey);
+    connopts.set_keep_alive_interval(20);
+    connopts.set_clean_session(true);
+    connopts.set_automatic_reconnect(1, 10);
+
+    if (m_aioPort == 8883) {
+    	mqtt::ssl_options sslopts;
+	sslopts.set_private_key(m_aioUserName);
+	sslopts.set_private_key_password(m_aioKey);
+        connopts.set_ssl(sslopts);
+    }
+
+    server += m_aioServer;
+    server += ":";
+    server += std::to_string(m_aioPort);
+
+    m_aio = new mqtt::async_client(server, m_localId);
+    LocalMQTTCallback callback(m_aio, connopts);
+    callback.setMessageCallback(aioIncomingMessage);
+    callback.setConnectionLostCallback(aioConnectionLost);
+    callback.setConnectedCallback(aioConnected);
+    m_aio->set_callback(callback);
+
+    try {
+        std::cout << "Connecting to AIO server at " << server << std::endl << std::flush;
+        m_aio->connect(connopts, nullptr, callback);
+    }
+    catch (const mqtt::exception&) {
+        std::cerr << "\nERROR: Unable to connect to AIO server: '" << m_aioServer << "'" << std::endl;
+        return false;
+    }
+    return true;
+}
+

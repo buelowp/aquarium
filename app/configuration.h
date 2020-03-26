@@ -44,6 +44,13 @@
 #include "temperature.h"
 #include "mcp3008.h"
 
+extern void mqttIncomingMessage(std::string topic, std::string message);
+extern void mqttConnectionLost(const std::string &cause);
+extern void mqttConnected();
+extern void aioIncomingMessage(std::string topic, std::string message);
+extern void aioConnected();
+extern void aioConnectionLost(const std::string &cause);
+
 class Configuration
 {
 public:
@@ -63,6 +70,8 @@ public:
     bool setValue(std::string, std::string);
     bool addArray(std::string, std::map<std::string, std::string>&);
     bool updateArray(std::string, std::map<std::string, std::string>&);
+    bool createAIOConnection();
+    bool createLocalConnection();
     
     mqtt::async_client *m_aio;
     mqtt::async_client *m_mqtt;

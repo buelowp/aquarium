@@ -38,7 +38,7 @@
 class LocalMQTTCallback : public virtual mqtt::callback, public virtual mqtt::iaction_listener
 {
 public:
-    LocalMQTTCallback(mqtt::async_client& cli, mqtt::connect_options& connOpts);
+    LocalMQTTCallback(mqtt::async_client *cli, mqtt::connect_options connOpts);
 
     void setMessageCallback(std::function<void(std::string, std::string)> cbk) { m_messageCallback = cbk; }
     void setConnectionLostCallback(std::function<void(const std::string&)> cbk) { m_connectionLostCallback = cbk; }
@@ -51,24 +51,26 @@ private:
     void connected(const std::string &cause) override;
     
     // TODO: Fix the exit(1) here, it's a little barbaric
-	void on_failure(const mqtt::token& tok) override {
-		std::cout << "Connection attempt failed" << std::endl;
-	}
+    void on_failure(const mqtt::token& tok) override {
+        std::cout << "Connection attempt failed" << std::endl;
+    }
 
-	// (Re)connection success
-	// Either this or connected() can be used for callbacks.
-	void on_success(const mqtt::token& tok) override {}
+    // (Re)connection success
+    // Either this or connected() can be used for callbacks.
+    void on_success(const mqtt::token& tok) override {
+        std::cout << "Connection attempt suceeded" << std::endl;
+    }
 
-	std::function<void(std::string, std::string)> m_messageCallback;
+    std::function<void(std::string, std::string)> m_messageCallback;
     std::function<void(const std::string&)> m_connectionLostCallback;
     std::function<void()> m_connectedCallback;
     
-	// Counter for the number of connection retries
-	int m_retries;
-	// The MQTT client
-	mqtt::async_client& m_client;
-	// Options to use if we need to reconnect
-	mqtt::connect_options& m_clientConnOpts;
+    // Counter for the number of connection retries
+    int m_retries;
+    // The MQTT client
+    mqtt::async_client *m_client;
+    // Options to use if we need to reconnect
+    mqtt::connect_options& m_clientConnOpts;
 };
 
 #endif // MQTTCLIENT_H

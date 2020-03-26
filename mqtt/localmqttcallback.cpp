@@ -25,7 +25,7 @@
 
 #include "localmqttcallback.h"
 
-LocalMQTTCallback::LocalMQTTCallback(mqtt::async_client& cli, mqtt::connect_options& connOpts) : 
+LocalMQTTCallback::LocalMQTTCallback(mqtt::async_client *cli, mqtt::connect_options connOpts) : 
     m_retries(0), m_client(cli), m_clientConnOpts(connOpts)
 {
 }
