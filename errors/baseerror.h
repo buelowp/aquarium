@@ -29,7 +29,6 @@
 #include <string>
 #include <iostream>
 #include <nlohmann/json.hpp>
-#include <gpiointerruptpp.h>
 
 #include <mqtt/async_client.h>
 #include "configuration.h"

@@ -28,6 +28,7 @@
 
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <memory>
 #include <functional>
 
@@ -39,7 +40,6 @@
 #include "potentialhydrogen.h"
 #include "dissolvedoxygen.h"
 #include "localmqttcallback.h"
-#include "flowrate.h"
 #include "itimer.h"
 #include "temperature.h"
 #include "mcp3008.h"
@@ -84,7 +84,6 @@ public:
     DissolvedOxygen *m_oxygen;
     PotentialHydrogen *m_ph;
     Temperature *m_temp;
-    FlowRate *m_fr;
     MCP3008 *m_adc;
     std::vector<std::string> m_invalidTempDeviceInConfig;
     std::string m_aioServer;

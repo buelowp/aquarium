@@ -32,30 +32,21 @@
 #include <mutex>
 #include <condition_variable>
 
-#include <gpiointerruptpp.h>
+#include <wiringPi.h>
 #include <libconfig.h>
 #include <syslog.h>
 #include <libgen.h>
 #include <errno.h>
 
+#include "functions.h"
+#include "configuration.h"
 #include "potentialhydrogen.h"
 #include "itimer.h"
 
-#define DEFAULT_FR_PIN      15
 #define ONE_SECOND          1000
 #define TWO_SECONDS         (2 * ONE_SECOND)
 #define ONE_MINUTE          (ONE_SECOND * 60)
 #define FIFTEEN_MINUTES     (ONE_MINUTE * 15)
-
-#define AIO_FLOWRATE_FEED   "pbuelow/feeds/aquarium.flowrate"
-#define AIO_OXYGEN_FEED     "pbuelow/feeds/aquarium.oxygen"
-#define AIO_PH_FEED         "pbuelow/feeds/aquarium.ph"
-#define AIO_TEMP_FEED       "pbuelow/feeds/aquarium.Temperature"
-#define AIO_LEVEL_FEED      "pbuelow/feeds/aquarium.waterlevel"
-
-#define GREEN_LED           13
-#define YELLOW_LED          12
-#define RED_LED             18
 
 struct LocalConfig {
     PotentialHydrogen *ph;
@@ -75,40 +66,23 @@ std::mutex g_mutex;
 
 void setNormalDisplay()
 {
-    GpioInterrupt::instance()->setValue(g_localConfig->green_led, 1);
-    GpioInterrupt::instance()->setValue(g_localConfig->yellow_led, 0);
-    GpioInterrupt::instance()->setValue(g_localConfig->red_led, 0);    
+    digitalWrite(Configuration::instance()->m_greenLed, 1);
+    digitalWrite(Configuration::instance()->m_yellowLed, 0);
+    digitalWrite(Configuration::instance()->m_redLed, 0);    
 }
 
 void setWarningDisplay()
 {
-    GpioInterrupt::instance()->setValue(g_localConfig->green_led, 0);
-    GpioInterrupt::instance()->setValue(g_localConfig->yellow_led, 1);
-    GpioInterrupt::instance()->setValue(g_localConfig->red_led, 0);    
+    digitalWrite(Configuration::instance()->m_greenLed, 0);
+    digitalWrite(Configuration::instance()->m_yellowLed, 1);
+    digitalWrite(Configuration::instance()->m_redLed, 0);    
 }
 
 void setErrorDisplay()
 {
-    GpioInterrupt::instance()->setValue(g_localConfig->green_led, 0);
-    GpioInterrupt::instance()->setValue(g_localConfig->yellow_led, 0);
-    GpioInterrupt::instance()->setValue(g_localConfig->red_led, 1);    
-}
-
-void initializeLeds(struct LocalConfig &lc)
-{
-    GpioInterrupt::instance()->setValue(lc.green_led, 1);
-    GpioInterrupt::instance()->setValue(lc.yellow_led, 0);
-    GpioInterrupt::instance()->setValue(lc.red_led, 0);
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    GpioInterrupt::instance()->setValue(lc.green_led, 0);
-    GpioInterrupt::instance()->setValue(lc.yellow_led, 1);
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    GpioInterrupt::instance()->setValue(lc.yellow_led, 0);
-    GpioInterrupt::instance()->setValue(lc.red_led, 1);
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    GpioInterrupt::instance()->setValue(lc.red_led, 0);
-    GpioInterrupt::instance()->setValue(lc.green_led, 1);
+    digitalWrite(Configuration::instance()->m_greenLed, 0);
+    digitalWrite(Configuration::instance()->m_yellowLed, 0);
+    digitalWrite(Configuration::instance()->m_redLed, 1);    
 }
 
 void waitForInput()
@@ -125,7 +99,7 @@ void writeCalibrationData()
 {
     while (1) {
         g_mutex.lock();
-        g_localConfig->ph->calibrate(g_localConfig->operation);
+        Configuration::instance()->m_ph->calibrate(g_localConfig->operation);
         g_mutex.unlock();
         switch (g_localConfig->operation) {
             case PotentialHydrogen::MID:
@@ -139,7 +113,7 @@ void writeCalibrationData()
                 setErrorDisplay();
                 break;
             case PotentialHydrogen::HIGH:
-                g_localConfig->ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
+                Configuration::instance()->m_ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
                 return;
         }
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -178,11 +152,11 @@ void phCallback(int cmd, std::string response)
 void eternalBlinkAndDie(int pin, int millihz)
 {
     int state = 0;
-    GpioInterrupt::instance()->value(pin, state);
+    digitalWrite(pin, state);
     while (1) {
         std::this_thread::sleep_for(std::chrono::milliseconds(millihz));
         state ^= 1UL << 0;
-        GpioInterrupt::instance()->setValue(pin, state); 
+        digitalWrite(pin, state); 
     }
 }
 
@@ -191,89 +165,6 @@ bool cisCompare(const std::string & str1, const std::string &str2)
 	return ((str1.size() == str2.size()) && std::equal(str1.begin(), str1.end(), str2.begin(), 
             [](const char c1, const char c2){ return (c1 == c2 || std::toupper(c1) == std::toupper(c2)); }
             ));
-}
-
-void setConfigDefaults(struct LocalConfig &lc)
-{
-    lc.configFile = "~/.config/aquarium.conf";
-}
-
-bool readConfig(struct LocalConfig *lc)
-{
-    config_t config;
-    FILE *fs = nullptr;
-    const char *aioServer = nullptr;
-    const char *aioUserName = nullptr;
-    const char *aioKey = nullptr;
-    const char *mqttServer = nullptr;
-    const char *mqttUserName = nullptr;
-    const char *mqttPassword = nullptr;
-    const char *localId = nullptr;
-    const char *wiredevice = nullptr;
-    const char *debug = nullptr;
-    int aioPort;
-    int mqttPort;
-    int frpin;
-    int owpin;
-    int adc;
-    int channel;
-    int aioEnabled;
-    int mqttEnabled;
-    int o2sensor;
-    int phsensor;
-    int red;
-    int yellow;
-    int green;
-    
-    config_init(&config);
-    if (config_read_file(&config, lc->configFile.c_str()) == CONFIG_FALSE) {
-        fprintf(stderr, "%s:%d - %s\n", config_error_file(&config), config_error_line(&config), config_error_text(&config));
-        config_destroy(&config);
-        setErrorDisplay();
-        return false;
-    }
-    else {
- 
-        if (config_lookup_int(&config, "red_led", &red) == CONFIG_TRUE)
-            lc->red_led = red;
-        else
-            lc->red_led = RED_LED;
-
-        if (config_lookup_int(&config, "yellow_led", &yellow) == CONFIG_TRUE)
-            lc->yellow_led = yellow;
-        else
-            lc->yellow_led = YELLOW_LED;
-
-        if (config_lookup_int(&config, "green_led", &green) == CONFIG_TRUE)
-            lc->green_led = green;
-        else
-            lc->green_led = GREEN_LED;
-
-
-        if (config_lookup_int(&config, "phsensor_address", &phsensor) == CONFIG_TRUE)
-            lc->phsensor_address = phsensor;
-        else
-            lc->phsensor_address = 0x63;
-
-        syslog(LOG_INFO, "PH device on i2c address %x", lc->phsensor_address);
-        fprintf(stderr, "PH device on i2c address %x\n", lc->phsensor_address);
-        
-        if (config_lookup_string(&config, "debug", &debug) == CONFIG_TRUE) {
-            if (cisCompare(debug, "INFO"))
-                setlogmask(LOG_UPTO (LOG_INFO));
-            if (cisCompare(debug, "ERROR"))
-                setlogmask(LOG_UPTO (LOG_ERR));
-            
-            syslog(LOG_INFO, "Resetting syslog debug level to %s", debug);
-            fprintf(stderr, "Resetting syslog debug level to %s\n", debug);
-        }
-    }
-
-    lc->ph = new PotentialHydrogen (0, lc->phsensor_address);
-    lc->ph->setCallback(phCallback);
-    
-    config_destroy(&config);
-    return true;
 }
 
 void usage(const char *name)
@@ -357,11 +248,11 @@ void mainloop(struct LocalConfig &lc)
     std::cout << "When you have finished, the program will print out the calibration results and exit." << std::endl;
     std::cout << "Insert the probe into the 7.00 solution, and press the enter key to begin." << std::endl;
     
-    initializeLeds(lc);
+    initializeLeds();
     
     g_localConfig->done = false;
     std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
-    g_localConfig->ph->sendReadCommand(900);
+    Configuration::instance()->m_ph->sendReadCommand(900);
     std::thread listener(waitForInput);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     std::thread sender(writeCalibrationData);
@@ -383,44 +274,37 @@ int main(int argc, char *argv[])
     setlogmask(LOG_UPTO (LOG_INFO));
     openlog(progname.c_str(), LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
     
-    syslog(LOG_NOTICE, "Application startup");
-    setConfigDefaults(lc);
+    syslog(LOG_NOTICE, "PH Calibration application startup");
+    wiringPiSetupGpio();
+    piHiPri(99);
     
     if (!parse_args(argc, argv, lc)) {
         eternalBlinkAndDie(lc.red_led, 2000);
     }
     // if this goes badly, just die but leave the error LED blinking at 1 hz
-    if (!readConfig(&lc)) {
-        eternalBlinkAndDie(lc.red_led, 1000);
+    if (!Configuration::instance()->readConfigFile()) {
+        std::cerr << "Unable to read configuration file, exiting..." << std::endl;
+        syslog(LOG_ERR, "Unable to read configuration file, exiting...");
+        exit(-2);
     }
 
-    if (!GpioInterrupt::instance()->addPin(lc.green_led, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
-        syslog(LOG_ERR, "Unable to open GPIO for green led");
+    initializeLeds();
     
-    if (!GpioInterrupt::instance()->addPin(lc.yellow_led, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
-        syslog(LOG_ERR, "Unable to open GPIO for yellow led");
-
-    if (!GpioInterrupt::instance()->addPin(lc.red_led, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
-        syslog(LOG_ERR, "Unable to open GPIO for red led");
-
-    initializeLeds(lc);
-    
-//    GpioInterrupt::instance()->start();    
     g_localConfig = &lc;
     if (g_localConfig->clear) {
         std::cout << "Clearing calibration data..." << std::endl;
-        g_localConfig->ph->calibrate(PotentialHydrogen::CLEAR, nullptr, 0);
-        g_localConfig->ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
+        Configuration::instance()->m_ph->calibrate(PotentialHydrogen::CLEAR, nullptr, 0);
+        Configuration::instance()->m_ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
         std::this_thread::sleep_for(std::chrono::seconds(2));
     }
     else if (g_localConfig->query) {
         std::cout << "Checking calibration data..." << std::endl;
-        g_localConfig->ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
+        Configuration::instance()->m_ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
         std::this_thread::sleep_for(std::chrono::seconds(2));
     }        
     else {
-        g_localConfig->ph->sendInfoCommand();
-        g_localConfig->ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
+        Configuration::instance()->m_ph->sendInfoCommand();
+        Configuration::instance()->m_ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
         mainloop(lc);
     }
     

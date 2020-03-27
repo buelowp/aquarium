@@ -27,8 +27,6 @@
 
 MCP3008::MCP3008(int device)
 {
-    wiringPiSetup();
-
     mcp3004Setup(200, device); // 3004 and 3008 are the same 4/8 channels
     m_enabled = true;
 }

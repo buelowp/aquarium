@@ -34,16 +34,15 @@
 #include <mutex>
 #include <condition_variable>
 
-#include <gpiointerruptpp.h>
-#include <adaio.h>
+#include <wiringPi.h>
 #include <syslog.h>
 #include <libgen.h>
 #include <errno.h>
 #include <nlohmann/json.hpp>
 
+#include "functions.h"
 #include "potentialhydrogen.h"
 #include "dissolvedoxygen.h"
-#include "flowrate.h"
 #include "itimer.h"
 #include "temperature.h"
 #include "mcp3008.h"
@@ -71,41 +70,6 @@ ErrorHandler g_errors;
 std::mutex g_mqttMutex;
 std::condition_variable g_mqttCV;
 bool g_finished;
-
-void eternalBlinkAndDie(int pin, int millihz)
-{
-    int state = 0;
-    GpioInterrupt::instance()->value(pin, state);
-    while (1) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(millihz));
-        state ^= 1UL << 0;
-        GpioInterrupt::instance()->setValue(pin, state); 
-    }
-}
-
-void initializeLeds()
-{
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_greenLed, 1);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellowLed, 0);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_redLed, 0);
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_greenLed, 0);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellowLed, 1);
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellowLed, 0);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_redLed, 1);
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_redLed, 0);
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_greenLed, 1);
-}
-
-bool cisCompare(const std::string & str1, const std::string &str2)
-{
-    return ((str1.size() == str2.size()) && std::equal(str1.begin(), str1.end(), str2.begin(), 
-            [](const char c1, const char c2){ return (c1 == c2 || std::toupper(c1) == std::toupper(c2)); }
-            ));
-}
 
 void decodeStatusResponse(std::string which, std::string &response)
 {
@@ -265,15 +229,6 @@ void doCallback(int cmd, std::string response)
     }
 }
 
-void flowRateCallback(GpioInterrupt::MetaData *md)
-{
-    
-}
-
-void getWaterLevel()
-{
-}
-
 void sendLocalResultData()
 {
     mqtt::message_ptr pubmsg;
@@ -300,11 +255,6 @@ void sendLocalResultData()
         }
     }
 
-    if (Configuration::instance()->m_frEnabled) {
-        j["aquarium"]["flowrate"]["gpm"] = Configuration::instance()->m_fr->gpm();
-        j["aquarium"]["flowrate"]["lpm"] = Configuration::instance()->m_fr->lpm();
-        j["aquarium"]["flowrate"]["hertz"] = Configuration::instance()->m_fr->hertz();
-    }
     j["aquarium"]["ph"] = Configuration::instance()->m_ph->getPH();
     j["aquarium"]["oxygen"] = Configuration::instance()->m_oxygen->getDO();
     
@@ -562,7 +512,10 @@ int main(int argc, char *argv[])
     openlog(progname.c_str(), LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
     
     syslog(LOG_NOTICE, "Application startup");
-        
+    
+    wiringPiSetupGpio();
+    piHiPri(99);
+    
     if (!parse_args(argc, argv)) {
         std::cerr << "Error parsing command line, exiting..." << std::endl;
         syslog(LOG_ERR, "Error parsing command line, exiting...");
@@ -576,15 +529,6 @@ int main(int argc, char *argv[])
         exit(-2);
     }
 
-    if (!GpioInterrupt::instance()->addPin(Configuration::instance()->m_greenLed, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
-        syslog(LOG_ERR, "Unable to open GPIO for green led");
-    
-    if (!GpioInterrupt::instance()->addPin(Configuration::instance()->m_yellowLed, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
-        syslog(LOG_ERR, "Unable to open GPIO for yellow led");
-
-    if (!GpioInterrupt::instance()->addPin(Configuration::instance()->m_redLed, GpioInterrupt::GPIO_DIRECTION_OUT, GpioInterrupt::GPIO_IRQ_NONE))
-        syslog(LOG_ERR, "Unable to open GPIO for red led");
-
     initializeLeds();
 
     Configuration::instance()->createLocalConnection();
@@ -593,12 +537,6 @@ int main(int argc, char *argv[])
     std::unique_lock<std::mutex> lk(g_mqttMutex);
     g_mqttCV.wait(lk, []{return g_finished;});
 
-    if (Configuration::instance()->m_frEnabled) {
-        GpioInterrupt::instance()->addPin(Configuration::instance()->m_flowRatePin);
-        GpioInterrupt::instance()->setPinCallback(Configuration::instance()->m_flowRatePin, flowRateCallback);
-    }
-    
-    GpioInterrupt::instance()->start();
     Configuration::instance()->m_oxygen->setCallback(doCallback);
     Configuration::instance()->m_ph->setCallback(phCallback);
 

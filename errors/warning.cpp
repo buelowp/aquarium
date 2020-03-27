@@ -60,7 +60,7 @@ void Warning::cancel()
     j["aquarium"]["error"]["handle"] = m_handle;
     j["aquarium"]["error"]["timeout"] = m_timeout;
 
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellowLed, 0);
+    digitalWrite(Configuration::instance()->m_yellowLed, 0);
 
     pubmsg = mqtt::make_message("aquarium/error", j.dump());
     Configuration::instance()->m_mqtt->publish(pubmsg);
@@ -76,7 +76,7 @@ void Warning::activate()
     j["aquarium"]["error"]["handle"] = m_handle;
     j["aquarium"]["error"]["timeout"] = m_timeout;
 
-    GpioInterrupt::instance()->setValue(Configuration::instance()->m_yellowLed, 1);
+    digitalWrite(Configuration::instance()->m_yellowLed, 1);
 
     pubmsg = mqtt::make_message("aquarium/error", j.dump());
     Configuration::instance()->m_mqtt->publish(pubmsg);
