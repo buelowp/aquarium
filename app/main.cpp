@@ -294,8 +294,8 @@ void sendLocalResultData()
         auto it = devices.begin();
         while (it != devices.end()) {
             double c = Configuration::instance()->m_temp->getTemperatureByDevice(it->first);
-            j["aquarium"]["temperature"][Configuration::instance()->m_temp->deviceName(it->first)]["celsius"] = c;
-            j["aquarium"]["temperature"][Configuration::instance()->m_temp->deviceName(it->first)]["farenheit"] = Configuration::instance()->m_temp->convertToFarenheit(c);
+            j["aquarium"]["temperature"][it->first]["celsius"] = c;
+            j["aquarium"]["temperature"][it->first]["farenheit"] = Configuration::instance()->m_temp->convertToFarenheit(c);
             it++;
         }
     }
@@ -373,20 +373,16 @@ void sendTempProbeIdentification()
     std::map<std::string, std::string> devices = Configuration::instance()->m_temp->devices();
     mqtt::message_ptr pubmsg;
     nlohmann::json j;
-    int index = 1;
 
     auto it = devices.begin();
     
     while (it != devices.end()) {
-        j["aquarium"]["device"]["ds18b20"][std::to_string(index)]["serial"] = it->first;
-        j["aquarium"]["device"]["ds18b20"][std::to_string(index)]["name"] = it->second;
+        j["aquarium"]["device"]["ds18b20"]["name"] = it->second;
+        j["aquarium"]["device"]["ds18b20"]["device"] = it->first;
         it++;
-        index++;
     }
     pubmsg = mqtt::make_message("aquarium/devices", j.dump());
-    if (Configuration::instance()->m_mqttConnected)
-        Configuration::instance()->m_mqtt->publish(pubmsg);
-}
+    Configuration::instance()->m_mqtt->publish(pubmsg);}
 
 /*
  * {"serial":"name"}
