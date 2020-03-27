@@ -315,7 +315,7 @@ void sendResultData()
     if (Configuration::instance()->m_aioConnected) {
         nlohmann::json wlj;
         wlj["value"] = Configuration::instance()->m_adc->reading(Configuration::instance()->m_adcWaterLevelIndex);
-        std::cout << __FUNCTION__ << ": pbuelow/feeds/aquarium.oxygen" << wlj.dump() << std::endl;
+        std::cout << __FUNCTION__ << ": pbuelow/feeds/aquarium.oxygen: " << wlj.dump() << std::endl;
         mqtt::message_ptr wl = mqtt::make_message("pbuelow/feeds/aquarium.oxygen", wlj.dump());
         Configuration::instance()->m_aio->publish(wl);
     }

@@ -75,6 +75,10 @@ public:
     
     mqtt::async_client *m_aio;
     mqtt::async_client *m_mqtt;
+    mqtt::connect_options *m_localConnOpts;
+    mqtt::connect_options *m_aioConnOpts;
+    mqtt::ssl_options m_localSSLOpts;
+    mqtt::ssl_options m_aioSSLOpts;
     LocalMQTTCallback *m_localCallback;
     LocalMQTTCallback *m_aioCallback;
     DissolvedOxygen *m_oxygen;
