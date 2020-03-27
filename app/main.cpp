@@ -274,7 +274,7 @@ void getWaterLevel()
 {
 }
 
-void sendResultData()
+void sendLocalResultData()
 {
     mqtt::message_ptr pubmsg;
     nlohmann::json j;
@@ -311,13 +311,39 @@ void sendResultData()
     pubmsg = mqtt::make_message("aquarium/data", j.dump());
     if (Configuration::instance()->m_mqttConnected)
         Configuration::instance()->m_mqtt->publish(pubmsg);
+}
 
+void sendAIOResultData()
+{
     if (Configuration::instance()->m_aioConnected) {
         nlohmann::json wlj;
+        nlohmann::json o2j;
+        nlohmann::json phj;
+        nlohmann::json tempj;
+        
         wlj["value"] = Configuration::instance()->m_adc->reading(Configuration::instance()->m_adcWaterLevelIndex);
-        std::cout << __FUNCTION__ << ": pbuelow/feeds/aquarium.oxygen: " << wlj.dump() << std::endl;
-        mqtt::message_ptr wl = mqtt::make_message("pbuelow/feeds/aquarium.oxygen", wlj.dump());
+        std::cout << __FUNCTION__ << ": pbuelow/feeds/aquarium.waterlevel: " << wlj.dump() << std::endl;
+        mqtt::message_ptr wl = mqtt::make_message("pbuelow/feeds/aquarium.waterlevel", wlj.dump());
         Configuration::instance()->m_aio->publish(wl);
+        
+        phj["value"] = Configuration::instance()->m_ph->getPH();
+        mqtt::message_ptr ph = mqtt::make_message("pbuelow/feeds/aquarium.ph", phj.dump());
+        Configuration::instance()->m_aio->publish(ph);
+        
+        o2j["value"] = Configuration::instance()->m_oxygen->getDO();
+        mqtt::message_ptr oxy = mqtt::make_message("pbuelow/feeds/aquarium.oxygen", o2j.dump());
+        Configuration::instance()->m_aio->publish(oxy);
+
+        if (Configuration::instance()->m_temp->enabled()) {
+            std::map<std::string, std::string> devices = Configuration::instance()->m_temp->devices();
+            auto it = devices.begin();
+            if (it != devices.end()) {
+                double c = Configuration::instance()->m_temp->getTemperatureByDevice(it->first);
+                tempj["value"] = Configuration::instance()->m_temp->convertToFarenheit(c);
+                mqtt::message_ptr temp = mqtt::make_message("pbuelow/feeds/aquarium.temperature", tempj.dump());
+                Configuration::instance()->m_aio->publish(temp);
+            }
+        }
     }
 }
 
@@ -427,20 +453,23 @@ void mainloop()
 {
     ITimer doUpdate;
     ITimer phUpdate;
-    ITimer sendUpdate;
+    ITimer sendLocalUpdate;
     ITimer tempCompensation;
+    ITimer sendAIOUpdate;
     
     Configuration::instance()->m_mqtt->start_consuming();
     Configuration::instance()->m_mqtt->subscribe("aquarium/set/#", 1);
 
     auto phfunc = []() { Configuration::instance()->m_ph->sendReadCommand(900); };
     auto dofunc = []() { Configuration::instance()->m_oxygen->sendReadCommand(600); };
-    auto updateFunc = []() { sendResultData(); };
+    auto updateLocalFunc = []() { sendLocalResultData(); };
     auto compFunc = []() { setTempCompensation(); };
+    auto updateAIO = []() { sendAIOResultData(); };
     
     doUpdate.setInterval(dofunc, TEN_SECONDS);
     phUpdate.setInterval(phfunc, TEN_SECONDS);
-    sendUpdate.setInterval(updateFunc, ONE_MINUTE);
+    sendLocalUpdate.setInterval(updateLocalFunc, ONE_MINUTE);
+    sendAIOUpdate.setInterval(updateAIO, ONE_MINUTE);
     tempCompensation.setInterval(compFunc, ONE_HOUR);
     
     setTempCompensation();
@@ -451,7 +480,8 @@ void mainloop()
     
     doUpdate.stop();
     phUpdate.stop();
-    sendUpdate.stop();
+    sendLocalUpdate.stop();
+    sendAIOUpdate.stop();
     tempCompensation.stop();
 }
 
