@@ -119,7 +119,7 @@ double Temperature::getTemperature(std::string device)
     return 0;
 }
 
-bool Temperature::setNameForDevice(std::string name, std::string device)
+bool Temperature::setNameForDevice(std::string device, std::string name)
 {
     auto it = m_devices.find(device);
     
