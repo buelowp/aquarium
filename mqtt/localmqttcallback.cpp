@@ -52,6 +52,7 @@ void LocalMQTTCallback::connected(const std::string& cause)
 
 void LocalMQTTCallback::delivery_complete(mqtt::delivery_token_ptr tok)
 {
+    std::cout << __FUNCTION__ << std::endl;
 }
 
 void LocalMQTTCallback::message_arrived(mqtt::const_message_ptr msg)

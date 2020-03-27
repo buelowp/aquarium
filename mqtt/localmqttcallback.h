@@ -70,7 +70,7 @@ private:
     // The MQTT client
     mqtt::async_client *m_client;
     // Options to use if we need to reconnect
-    mqtt::connect_options& m_clientConnOpts;
+    mqtt::connect_options m_clientConnOpts;
 };
 
 #endif // MQTTCLIENT_H

@@ -75,6 +75,8 @@ public:
     
     mqtt::async_client *m_aio;
     mqtt::async_client *m_mqtt;
+    LocalMQTTCallback *m_localCallback;
+    LocalMQTTCallback *m_aioCallback;
     DissolvedOxygen *m_oxygen;
     PotentialHydrogen *m_ph;
     Temperature *m_temp;
