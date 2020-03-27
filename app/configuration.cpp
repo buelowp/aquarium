@@ -538,16 +538,19 @@ bool Configuration::createAIOConnection()
 
     std::string server("tcp://");
 
-    m_aioConnOpts = new mqtt::connect_options(m_aioUserName, m_aioKey);
-    m_aioConnOpts->set_keep_alive_interval(20);
-    m_aioConnOpts->set_clean_session(true);
-    m_aioConnOpts->set_automatic_reconnect(1, 10);
-
     if (m_aioPort == 8883) {
+        m_aioConnOpts = new mqtt::connect_options();
         m_aioSSLOpts.set_private_key(m_aioUserName);
         m_aioSSLOpts.set_private_key_password(m_aioKey);
         m_aioConnOpts->set_ssl(m_aioSSLOpts);
     }
+    else {
+        m_aioConnOpts = new mqtt::connect_options(m_aioUserName, m_aioKey);
+    }
+
+    m_aioConnOpts->set_keep_alive_interval(20);
+    m_aioConnOpts->set_clean_session(true);
+    m_aioConnOpts->set_automatic_reconnect(1, 10);
 
     server += m_aioServer;
     server += ":";
