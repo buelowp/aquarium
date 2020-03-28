@@ -541,12 +541,12 @@ int main(int argc, char *argv[])
     Configuration::instance()->m_ph->setCallback(phCallback);
 
     Configuration::instance()->m_oxygen->sendInfoCommand();
-    Configuration::instance()->m_oxygen->calibrate(DissolvedOxygen::QUERY, nullptr, 0);
+    Configuration::instance()->m_oxygen->calibrate(DissolvedOxygen::DO_QUERY, nullptr, 0);
     Configuration::instance()->m_oxygen->getTempCompensation();
     Configuration::instance()->m_oxygen->sendStatusCommand();
 
     Configuration::instance()->m_ph->sendInfoCommand();
-    Configuration::instance()->m_ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
+    Configuration::instance()->m_ph->calibrate(PotentialHydrogen::PH_QUERY, nullptr, 0);
     Configuration::instance()->m_ph->getTempCompensation();
     Configuration::instance()->m_ph->sendStatusCommand();
     

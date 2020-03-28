@@ -38,11 +38,11 @@
 class DissolvedOxygen : public AtlasScientificI2C
 {
 public:
-    static const int CLEAR = 100;
-    static const int DEFAULT = 101;
-    static const int LOW = 102;
-    static const int ZERO = 102;
-    static const int QUERY = 104;
+    static const int DO_CLEAR = 100;
+    static const int DO_DEFAULT = 101;
+    static const int DO_LOW = 102;
+    static const int DO_ZERO = 102;
+    static const int DO_QUERY = 104;
  
     DissolvedOxygen(uint8_t, uint8_t);
     virtual ~DissolvedOxygen();

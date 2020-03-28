@@ -115,7 +115,7 @@ void waitForInput()
 void writeCalibrationData()
 {
     g_mutex.lock();
-    Configuration::instance()->m_oxygen->calibrate(DissolvedOxygen::DEFAULT, nullptr, 0);
+    Configuration::instance()->m_oxygen->calibrate(DissolvedOxygen::DO_DEFAULT, nullptr, 0);
     g_mutex.unlock();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 }
@@ -287,18 +287,18 @@ int main(int argc, char *argv[])
     g_localConfig = &lc;
     if (g_localConfig->clear) {
         std::cout << "Clearing calibration data..." << std::endl;
-        Configuration::instance()->m_oxygen->calibrate(DissolvedOxygen::CLEAR, nullptr, 0);
-        Configuration::instance()->m_oxygen->calibrate(DissolvedOxygen::QUERY, nullptr, 0);
+        Configuration::instance()->m_oxygen->calibrate(DissolvedOxygen::DO_CLEAR, nullptr, 0);
+        Configuration::instance()->m_oxygen->calibrate(DissolvedOxygen::DO_QUERY, nullptr, 0);
         std::this_thread::sleep_for(std::chrono::seconds(2));
     }
     else if (g_localConfig->query) {
         std::cout << "Checking calibration data..." << std::endl;
-        Configuration::instance()->m_oxygen->calibrate(DissolvedOxygen::QUERY, nullptr, 0);
+        Configuration::instance()->m_oxygen->calibrate(DissolvedOxygen::DO_QUERY, nullptr, 0);
         std::this_thread::sleep_for(std::chrono::seconds(2));
     }        
     else {
         Configuration::instance()->m_oxygen->sendInfoCommand();
-        Configuration::instance()->m_oxygen->calibrate(DissolvedOxygen::QUERY, nullptr, 0);
+        Configuration::instance()->m_oxygen->calibrate(DissolvedOxygen::DO_QUERY, nullptr, 0);
         mainloop(lc);
     }
     

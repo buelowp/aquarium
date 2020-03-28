@@ -102,18 +102,18 @@ void writeCalibrationData()
         Configuration::instance()->m_ph->calibrate(g_localConfig->operation);
         g_mutex.unlock();
         switch (g_localConfig->operation) {
-            case PotentialHydrogen::MID:
-                g_localConfig->operation = PotentialHydrogen::LOW;
+            case PotentialHydrogen::PH_MID:
+                g_localConfig->operation = PotentialHydrogen::PH_LOW;
                 std::cout << "Place sensor in pH 4.00 solution now." << std::endl;
                 setWarningDisplay();
                 break;
-            case PotentialHydrogen::LOW:
-                g_localConfig->operation = PotentialHydrogen::HIGH;
+            case PotentialHydrogen::PH_LOW:
+                g_localConfig->operation = PotentialHydrogen::PH_HIGH;
                 std::cout << "Place sensor in pH 10.00 solution now." << std::endl;
                 setErrorDisplay();
                 break;
-            case PotentialHydrogen::HIGH:
-                Configuration::instance()->m_ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
+            case PotentialHydrogen::PH_HIGH:
+                Configuration::instance()->m_ph->calibrate(PotentialHydrogen::PH_QUERY, nullptr, 0);
                 return;
         }
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -257,7 +257,7 @@ void mainloop(struct LocalConfig &lc)
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     std::thread sender(writeCalibrationData);
     ph.setInterval(phfunc, TWO_SECONDS);
-    g_localConfig->operation = PotentialHydrogen::MID;
+    g_localConfig->operation = PotentialHydrogen::PH_MID;
     sender.join();
     g_localConfig->done = true;
     std::cout << "Calibration complete, cleaning up, press enter to start cleaning up" << std::endl;
@@ -293,18 +293,18 @@ int main(int argc, char *argv[])
     g_localConfig = &lc;
     if (g_localConfig->clear) {
         std::cout << "Clearing calibration data..." << std::endl;
-        Configuration::instance()->m_ph->calibrate(PotentialHydrogen::CLEAR, nullptr, 0);
-        Configuration::instance()->m_ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
+        Configuration::instance()->m_ph->calibrate(PotentialHydrogen::PH_CLEAR, nullptr, 0);
+        Configuration::instance()->m_ph->calibrate(PotentialHydrogen::PH_QUERY, nullptr, 0);
         std::this_thread::sleep_for(std::chrono::seconds(2));
     }
     else if (g_localConfig->query) {
         std::cout << "Checking calibration data..." << std::endl;
-        Configuration::instance()->m_ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
+        Configuration::instance()->m_ph->calibrate(PotentialHydrogen::PH_QUERY, nullptr, 0);
         std::this_thread::sleep_for(std::chrono::seconds(2));
     }        
     else {
         Configuration::instance()->m_ph->sendInfoCommand();
-        Configuration::instance()->m_ph->calibrate(PotentialHydrogen::QUERY, nullptr, 0);
+        Configuration::instance()->m_ph->calibrate(PotentialHydrogen::PH_QUERY, nullptr, 0);
         mainloop(lc);
     }
     
