@@ -38,7 +38,6 @@
 #include <libgen.h>
 #include <errno.h>
 
-#include "functions.h"
 #include "configuration.h"
 #include "dissolvedoxygen.h"
 #include "itimer.h"
@@ -63,6 +62,41 @@ struct LocalConfig {
 
 struct LocalConfig *g_localConfig;
 std::mutex g_mutex;
+
+void eternalBlinkAndDie(int pin, int millihz)
+{
+    int state = 0;
+    digitalWrite(pin, state);
+    while (1) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(millihz));
+        state ^= 1UL << 0;
+        digitalWrite(pin, state); 
+    }
+}
+
+void initializeLeds()
+{
+    digitalWrite(Configuration::instance()->m_greenLed, 1);
+    digitalWrite(Configuration::instance()->m_yellowLed, 0);
+    digitalWrite(Configuration::instance()->m_redLed, 0);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    digitalWrite(Configuration::instance()->m_greenLed, 0);
+    digitalWrite(Configuration::instance()->m_yellowLed, 1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    digitalWrite(Configuration::instance()->m_yellowLed, 0);
+    digitalWrite(Configuration::instance()->m_redLed, 1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    digitalWrite(Configuration::instance()->m_redLed, 0);
+    digitalWrite(Configuration::instance()->m_greenLed, 1);
+}
+
+bool cisCompare(const std::string & str1, const std::string &str2)
+{
+    return ((str1.size() == str2.size()) && std::equal(str1.begin(), str1.end(), str2.begin(), 
+            [](const char c1, const char c2){ return (c1 == c2 || std::toupper(c1) == std::toupper(c2)); }
+            ));
+}
 
 void setNormalDisplay()
 {
@@ -100,6 +134,38 @@ void initializeLeds(struct LocalConfig &lc)
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     digitalWrite(lc.red_led, 0);
     digitalWrite(lc.green_led, 1);
+}
+
+void mqttIncomingMessage(std::string, std::string)
+{
+}
+
+void mqttConnectionLost(const std::string &cause)
+{
+    std::cout << "MQTT disconnected: " << cause << std::endl;
+    Configuration::instance()->m_mqttConnected = false;
+}
+
+void mqttConnected()
+{
+    std::cout << "MQTT connected!" << std::endl;
+}
+
+void aioIncomingMessage(std::string topic, std::string message)
+{
+    std::cout << __FUNCTION__ << ": Odd, we shouldn't get messages from AIO" << std::endl;
+}
+
+void aioConnected()
+{
+    std::cout << "AIO connected!" << std::endl;
+    Configuration::instance()->m_aioConnected = true;
+}
+
+void aioConnectionLost(const std::string &cause)
+{
+    std::cout << __FUNCTION__ << ": AIO disconnected: " << cause << std::endl;
+    Configuration::instance()->m_aioEnabled = false;
 }
 
 void waitForInput()
@@ -144,24 +210,6 @@ void doCallback(int cmd, std::string response)
         default:
             break;
     }
-}
-
-void eternalBlinkAndDie(int pin, int millihz)
-{
-    int state = 0;
-    digitalWrite(pin, state);
-    while (1) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(millihz));
-        state ^= 1UL << 0;
-        digitalWrite(pin, state); 
-    }
-}
-
-bool cisCompare(const std::string & str1, const std::string &str2)
-{
-	return ((str1.size() == str2.size()) && std::equal(str1.begin(), str1.end(), str2.begin(), 
-            [](const char c1, const char c2){ return (c1 == c2 || std::toupper(c1) == std::toupper(c2)); }
-            ));
 }
 
 void usage(const char *name)

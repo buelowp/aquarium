@@ -41,6 +41,7 @@
 #include "configuration.h"
 #include "potentialhydrogen.h"
 #include "itimer.h"
+#include "temperature.h"
 
 #define ONE_SECOND          1000
 #define TWO_SECONDS         (2 * ONE_SECOND)
@@ -62,7 +63,6 @@ struct LocalConfig {
 
 struct LocalConfig *g_localConfig;
 std::mutex g_mutex;
-
 
 void eternalBlinkAndDie(int pin, int millihz)
 {
@@ -128,6 +128,38 @@ void waitForInput()
         g_mutex.unlock();
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
+}
+
+void mqttIncomingMessage(std::string, std::string)
+{
+}
+
+void mqttConnectionLost(const std::string &cause)
+{
+    std::cout << "MQTT disconnected: " << cause << std::endl;
+    Configuration::instance()->m_mqttConnected = false;
+}
+
+void mqttConnected()
+{
+    std::cout << "MQTT connected!" << std::endl;
+}
+
+void aioIncomingMessage(std::string topic, std::string message)
+{
+    std::cout << __FUNCTION__ << ": Odd, we shouldn't get messages from AIO" << std::endl;
+}
+
+void aioConnected()
+{
+    std::cout << "AIO connected!" << std::endl;
+    Configuration::instance()->m_aioConnected = true;
+}
+
+void aioConnectionLost(const std::string &cause)
+{
+    std::cout << __FUNCTION__ << ": AIO disconnected: " << cause << std::endl;
+    Configuration::instance()->m_aioEnabled = false;
 }
 
 void writeCalibrationData()
@@ -264,8 +296,6 @@ void mainloop(struct LocalConfig &lc)
     std::cout << "The program will then transition to the next calibration step and wait for the enter key" << std::endl;
     std::cout << "When you have finished, the program will print out the calibration results and exit." << std::endl;
     std::cout << "Insert the probe into the 7.00 solution, and press the enter key to begin." << std::endl;
-    
-    initializeLeds();
     
     g_localConfig->done = false;
     std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
