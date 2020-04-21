@@ -26,7 +26,9 @@
 #ifndef WARNINGERROR_H
 #define WARNINGERROR_H
 
+#include <wiringPi.h>
 #include <mqtt/async_client.h>
+
 #include "baseerror.h"
 
 class Warning : public BaseError

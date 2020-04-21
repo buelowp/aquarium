@@ -28,7 +28,7 @@
 
 #include <vector>
 
-#include <gpiointerruptpp.h>
+#include <wiringPi.h>
 
 #include "configuration.h"
 #include "warning.h"

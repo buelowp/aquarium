@@ -147,7 +147,7 @@ bool PotentialHydrogen::calibrate(int cmd, uint8_t buf[], int size)
     payload.push_back(',');
     
     switch (cmd) {
-        case LOW:
+        case PH_LOW:
             payload.push_back('l');
             payload.push_back('o');
             payload.push_back('w');
@@ -159,7 +159,7 @@ bool PotentialHydrogen::calibrate(int cmd, uint8_t buf[], int size)
             std::cout << "Setting LOW calibration value to " << m_lastPHValue << std::endl;
 //            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 900);
             break;
-        case MID:
+        case PH_MID:
             payload.push_back('m');
             payload.push_back('i');
             payload.push_back('d');
@@ -171,7 +171,7 @@ bool PotentialHydrogen::calibrate(int cmd, uint8_t buf[], int size)
             std::cout << "Setting MID calibration value to " << m_lastPHValue << std::endl;
 //            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 900);
             break;
-        case HIGH:
+        case PH_HIGH:
             payload.push_back('h');
             payload.push_back('i');
             payload.push_back('g');
@@ -184,7 +184,7 @@ bool PotentialHydrogen::calibrate(int cmd, uint8_t buf[], int size)
             std::cout << "Setting HIGH calibration value to " << m_lastPHValue << std::endl;
 //            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 900);
             break;
-        case CLEAR:
+        case PH_CLEAR:
             payload.push_back('c');
             payload.push_back('l');
             payload.push_back('e');
@@ -193,7 +193,7 @@ bool PotentialHydrogen::calibrate(int cmd, uint8_t buf[], int size)
             printBuffer(payload);
 //            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 300);
             break;
-        case QUERY:
+        case PH_QUERY:
             payload.push_back('?');
             sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 300);
             break;

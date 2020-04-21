@@ -26,12 +26,11 @@
 #ifndef FATALERROR_H
 #define FATALERROR_H
 
-#include "baseerror.h"
+#include <wiringPi.h>
 #include <mqtt/async_client.h>
 
-/**
- * @todo write docs
- */
+#include "baseerror.h"
+
 class Fatal : public BaseError
 {
 public:

@@ -183,16 +183,16 @@ void DissolvedOxygen::calibrate(int cmd, uint8_t buf[], int size)
     payload.push_back(',');
     
     switch (cmd) {
-        case DEFAULT:
+        case DO_DEFAULT:
             payload.pop_back();
             printBuffer(payload);
 //            sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 1300);
             break;
-        case ZERO:
+        case DO_ZERO:
             payload.push_back('0');
             sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 1300);
             break;            
-        case CLEAR:
+        case DO_CLEAR:
             payload.push_back('c');
             payload.push_back('l');
             payload.push_back('e');
@@ -200,7 +200,7 @@ void DissolvedOxygen::calibrate(int cmd, uint8_t buf[], int size)
             payload.push_back('r');
             sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 300);
             break;
-        case QUERY:
+        case DO_QUERY:
             payload.push_back('?');
             sendCommand(AtlasScientificI2C::CALIBRATE, payload.data(), payload.size(), 300);
             break;

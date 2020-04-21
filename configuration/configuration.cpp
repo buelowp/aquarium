@@ -28,7 +28,6 @@
 Configuration::Configuration()
 {
     m_handle = 1;
-    m_frEnabled = 0;
     m_newTempDeviceFound = false;
 }
 
@@ -340,17 +339,6 @@ bool Configuration::readConfigFile()
             m_adcWaterLevelIndex = 0;
         }
         
-        if (root.exists("flowrate_enable")) {
-            root.lookupValue("flowrate_enable", m_frEnabled);
-            if (m_frEnabled) {
-                if (root.exists("flowrate_pin")) {
-                    root.lookupValue("flowrate_pin", m_flowRatePin);
-                }
-                syslog(LOG_INFO, "Monitoring flowrate on pin %d", m_flowRatePin);
-                fprintf(stderr, "Monitoring flowrate on pin %d\n", m_flowRatePin);
-            }
-        }
-        
         if (root.exists("spi_device")) {
             root.lookupValue("spi_device", m_mcp3008Device);
         }
@@ -459,7 +447,6 @@ bool Configuration::readConfigFile()
     
     m_oxygen = new DissolvedOxygen(1, m_o2SensorAddress);
     m_ph = new PotentialHydrogen (1, m_phSensorAddress);
-    m_fr = new FlowRate();
     m_adc = new MCP3008(0);
     
     return true;

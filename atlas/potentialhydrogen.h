@@ -42,11 +42,11 @@
 class PotentialHydrogen : public AtlasScientificI2C
 {
 public:
-    static const int CLEAR = 100;
-    static const int LOW = 101;
-    static const int MID = 102;
-    static const int HIGH = 103;
-    static const int QUERY = 104;
+    static const int PH_CLEAR = 100;
+    static const int PH_LOW = 101;
+    static const int PH_MID = 102;
+    static const int PH_HIGH = 103;
+    static const int PH_QUERY = 104;
     
     static const int NOCALIBRATION = 0;
     static const int ONEPOINTCAL = 1;

@@ -26,12 +26,11 @@
 #ifndef CRITICALERROR_H
 #define CRITICALERROR_H
 
+#include <wiringPi.h>
 #include <mqtt/async_client.h>
+
 #include "baseerror.h"
 
-/**
- * @todo write docs
- */
 class Critical : public BaseError
 {
 public:
