@@ -105,7 +105,6 @@ public:
     bool m_mqttConnected;
     bool m_aioEnabled;
     bool m_newTempDeviceFound;
-    int m_frEnabled;
     int m_o2SensorAddress;
     int m_phSensorAddress;
     int m_ecSensorAddress;

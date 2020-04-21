@@ -28,7 +28,6 @@
 Configuration::Configuration()
 {
     m_handle = 1;
-    m_frEnabled = 0;
     m_newTempDeviceFound = false;
 }
 
