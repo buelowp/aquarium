@@ -69,6 +69,7 @@ public:
     void setTempCompensationAndRead(uint8_t*, int);
     void setTempCompensationAndRead(double);
     void getTempCompensation();
+    void disableLeds();
     std::string getLastReason() { return m_lastResetReason; }
     double getVoltage() { return m_lastVoltage; }
     double getPH() { return m_lastPHValue; }

@@ -58,6 +58,7 @@ public:
     static const int SETTEMPCOMP = 5;
     static const int SETTEMPCOMPREAD = 6;
     static const int GETTEMPCOMP = 7;
+    static const int DISABLELEDS = 8;
 
     AtlasScientificI2C(uint8_t, uint8_t);
     virtual ~AtlasScientificI2C();

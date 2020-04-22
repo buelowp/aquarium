@@ -57,6 +57,7 @@ public:
     void setTempCompensationAndRead(uint8_t*, int);
     void setTempCompensationAndRead(double);
     void getTempCompensation();
+    void disableLeds();
 
 private:
     void handleCalibration(std::string);

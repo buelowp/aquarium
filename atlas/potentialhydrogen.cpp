@@ -220,6 +220,16 @@ void PotentialHydrogen::slope()
     sendCommand(AtlasScientificI2C::SLOPE, payload.data(), payload.size(), 300);
 }
 
+void PotentialHydrogen::disableLeds()
+{
+    std::vector<uint8_t> payload = { 'L', ',', '0'};
+    
+    if (!m_enabled)
+        return;
+    
+    sendCommand(AtlasScientificI2C::DISABLELEDS, payload.data(), payload.size(), 300);
+}
+
 void PotentialHydrogen::setTempCompensation(double temp)
 {
     if (!m_enabled)

@@ -400,7 +400,6 @@ void rapidFireWaterLevelMessaging(void *t)
     nlohmann::json j;
     ITimer *timer = static_cast<ITimer*>(t);
     
-    std::cout << __FUNCTION__ << std::endl;
     if (g_stopRapidFireWaterLevel) {
         timer->stop();
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -596,13 +595,10 @@ int main(int argc, char *argv[])
     initializeLeds();
 
     Configuration::instance()->createLocalConnection();
-    std::cout << __FUNCTION__ << ":" << __LINE__ << std::endl;
     Configuration::instance()->createAIOConnection();
-    std::cout << __FUNCTION__ << ":" << __LINE__ << std::endl;
 
     std::unique_lock<std::mutex> lk(g_mqttMutex);
     g_mqttCV.wait(lk, []{return g_finished;});
-    std::cout << __FUNCTION__ << ":" << __LINE__ << std::endl;
 
     Configuration::instance()->m_oxygen->setCallback(doCallback);
     Configuration::instance()->m_ph->setCallback(phCallback);
@@ -611,11 +607,14 @@ int main(int argc, char *argv[])
     Configuration::instance()->m_oxygen->calibrate(DissolvedOxygen::DO_QUERY, nullptr, 0);
     Configuration::instance()->m_oxygen->getTempCompensation();
     Configuration::instance()->m_oxygen->sendStatusCommand();
+    Configuration::instance()->m_oxygen->disableLeds();
+
 
     Configuration::instance()->m_ph->sendInfoCommand();
     Configuration::instance()->m_ph->calibrate(PotentialHydrogen::PH_QUERY, nullptr, 0);
     Configuration::instance()->m_ph->getTempCompensation();
     Configuration::instance()->m_ph->sendStatusCommand();
+    Configuration::instance()->m_ph->disableLeds();
     
     sendTempProbeIdentification();
     
