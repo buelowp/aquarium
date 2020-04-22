@@ -287,7 +287,7 @@ bool parse_args(int argc, char **argv, struct LocalConfig &config)
 void mainloop(struct LocalConfig &lc)
 {
     ITimer ph;
-    auto phfunc = [lc]() { lc.ph->sendReadCommand(900); };
+    auto phfunc = [lc](void*) { lc.ph->sendReadCommand(900); };
         
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     std::cout << "Calibration operation for the pH probe" << std::endl;

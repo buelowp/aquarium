@@ -69,6 +69,7 @@ ErrorHandler g_errors;
 std::mutex g_mqttMutex;
 std::condition_variable g_mqttCV;
 bool g_finished;
+bool g_stopRapidFireWaterLevel;
 
 void eternalBlinkAndDie(int pin, int millihz)
 {
@@ -393,11 +394,38 @@ void nameTempProbe(std::string json)
         Configuration::instance()->updateArray(std::string("ds18b20"), entry);
 }
 
+void rapidFireWaterLevelMessaging(void *t)
+{
+    mqtt::message_ptr pubmsg;
+    nlohmann::json j;
+    ITimer *timer = static_cast<ITimer*>(t);
+    
+    std::cout << __FUNCTION__ << std::endl;
+    if (g_stopRapidFireWaterLevel) {
+        timer->stop();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        delete timer;
+        return;
+    }
+    j["aquarium"]["waterlevel"] = Configuration::instance()->m_adc->reading(Configuration::instance()->m_adcWaterLevelIndex);
+
+    pubmsg = mqtt::make_message("aquarium/waterlevel/value", j.dump());
+    Configuration::instance()->m_mqtt->publish(pubmsg);
+}
+
 void mqttIncomingMessage(std::string topic, std::string message)
 {
     std::cout << __FUNCTION__ << ": Handling topic " << topic << std::endl;
     if (topic == "aquarium/set/ds18b20") {
         nameTempProbe(message);
+    }
+    if (topic == "aquarium/waterlevel/rapidfire/start") {
+        ITimer *t = new ITimer();
+        t->setInterval(rapidFireWaterLevelMessaging, 500);
+        g_stopRapidFireWaterLevel = false;
+    }
+    if (topic == "aquarium/waterlevel/rapidfire/stop") {
+        g_stopRapidFireWaterLevel = true;        
     }
 }
 
@@ -411,6 +439,7 @@ void mqttConnected()
 {
     std::cout << "MQTT connected!" << std::endl;
     Configuration::instance()->m_mqttConnected = true;
+
     g_finished = true;
     g_mqttCV.notify_all();
 }
@@ -440,14 +469,15 @@ void mainloop()
     ITimer tempCompensation;
     ITimer sendAIOUpdate;
     
-    Configuration::instance()->m_mqtt->start_consuming();
     Configuration::instance()->m_mqtt->subscribe("aquarium/set/#", 1);
+    Configuration::instance()->m_mqtt->subscribe("aquarium/waterlevel/rapidfire/#", 1);
+    Configuration::instance()->m_mqtt->start_consuming();
 
-    auto phfunc = []() { Configuration::instance()->m_ph->sendReadCommand(900); };
-    auto dofunc = []() { Configuration::instance()->m_oxygen->sendReadCommand(600); };
-    auto updateLocalFunc = []() { sendLocalResultData(); };
-    auto compFunc = []() { setTempCompensation(); };
-    auto updateAIO = []() { sendAIOResultData(); };
+    auto phfunc = [](void*) { Configuration::instance()->m_ph->sendReadCommand(900); };
+    auto dofunc = [](void*) { Configuration::instance()->m_oxygen->sendReadCommand(600); };
+    auto updateLocalFunc = [](void*) { sendLocalResultData(); };
+    auto compFunc = [](void*) { setTempCompensation(); };
+    auto updateAIO = [](void*) { sendAIOResultData(); };
     
     doUpdate.setInterval(dofunc, TEN_SECONDS);
     phUpdate.setInterval(phfunc, TEN_SECONDS);
@@ -566,10 +596,13 @@ int main(int argc, char *argv[])
     initializeLeds();
 
     Configuration::instance()->createLocalConnection();
+    std::cout << __FUNCTION__ << ":" << __LINE__ << std::endl;
     Configuration::instance()->createAIOConnection();
+    std::cout << __FUNCTION__ << ":" << __LINE__ << std::endl;
 
     std::unique_lock<std::mutex> lk(g_mqttMutex);
     g_mqttCV.wait(lk, []{return g_finished;});
+    std::cout << __FUNCTION__ << ":" << __LINE__ << std::endl;
 
     Configuration::instance()->m_oxygen->setCallback(doCallback);
     Configuration::instance()->m_ph->setCallback(phCallback);

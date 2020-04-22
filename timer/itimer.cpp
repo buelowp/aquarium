@@ -35,7 +35,7 @@ ITimer::~ITimer()
     this->clear = false;
 }
 
-void ITimer::setTimeout(std::function<void()> function, int interval)
+void ITimer::setTimeout(std::function<void(void*)> function, int interval)
 {
     // 1 minute timeouts tend to be off by 2ish seconds, so let's see if we can fix that a bit
     if (interval >= 1000 * 60)
@@ -51,7 +51,7 @@ void ITimer::setTimeout(std::function<void()> function, int interval)
         }
         
         try {
-            function();
+            function(static_cast<void*>(this));
         }
         catch (std::exception &e) {
             syslog(LOG_ERR, "Unable to execute function: %s\n", e.what());
@@ -60,7 +60,7 @@ void ITimer::setTimeout(std::function<void()> function, int interval)
     t.detach();
 }
 
-void ITimer::setInterval(std::function<void()> function, int interval)
+void ITimer::setInterval(std::function<void(void*)> function, int interval)
 {
     // 1 minute timeouts tend to be off by 2ish seconds, so let's see if we can fix that a bit
     if (interval >= 1000 * 60)
@@ -75,7 +75,7 @@ void ITimer::setInterval(std::function<void()> function, int interval)
                 return;
 
             try {
-                function();
+                function(static_cast<void*>(this));
             }
             catch (std::exception &e) {
                 syslog(LOG_ERR, "Unable to execute function: %s\n", e.what());
