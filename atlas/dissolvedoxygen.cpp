@@ -239,6 +239,16 @@ void DissolvedOxygen::printBuffer(std::vector<uint8_t> &packet)
     std::cout.copyfmt(oldState);
 }
 
+void DissolvedOxygen::disableLeds()
+{
+    std::vector<uint8_t> payload = { 'L', ',', '0'};
+    
+    if (!m_enabled)
+        return;
+    
+    sendCommand(AtlasScientificI2C::DISABLELEDS, payload.data(), payload.size(), 300);
+}
+
 void DissolvedOxygen::setTempCompensation(double temp)
 {
     if (!m_enabled)
