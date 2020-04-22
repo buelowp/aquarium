@@ -284,7 +284,7 @@ bool parse_args(int argc, char **argv, struct LocalConfig &config)
 void mainloop(struct LocalConfig &lc)
 {
     ITimer oxygen;
-    auto dofunc = [lc]() { lc.oxygen->sendReadCommand(900); };
+    auto dofunc = [lc](void*) { lc.oxygen->sendReadCommand(900); };
         
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     std::cout << "Calibration operation for the DO probe." << std::endl;

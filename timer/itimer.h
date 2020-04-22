@@ -40,11 +40,12 @@ public:
     ITimer();
     ~ITimer();
     
-    void setTimeout(std::function<void()> function, int delay);
-    void setInterval(std::function<void()> function, int interval);
+    void setTimeout(std::function<void(void*)> function, int delay);
+    void setInterval(std::function<void(void*)> function, int interval);
     void stop() { clear = true; }
     
 private:
+    void *m_instance;
     bool clear;
 };
 
