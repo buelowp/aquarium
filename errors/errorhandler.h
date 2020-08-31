@@ -27,6 +27,7 @@
 #define ERRORHANDLER_H
 
 #include <vector>
+#include <mqtt/async_client.h>
 
 #include <wiringPi.h>
 
@@ -38,14 +39,17 @@
 class ErrorHandler
 {
 public:
+    typedef enum STATICHANDLES:int {
+        MqttConnectionLost = 1
+    } StaticErrorHandles;
+
     ErrorHandler();
     ~ErrorHandler();
     
-    unsigned int fatal(unsigned int handle, std::string msg);
-    unsigned int critical(unsigned int handle, std::string msg);
-    unsigned int warning(unsigned int handle, std::string msg);
+    unsigned int fatal(std::string msg, mqtt::async_client *client, int handle = 0);
+    unsigned int critical(std::string msg, mqtt::async_client *client, int timeout, int handle = 0);
+    unsigned int warning(std::string msg, mqtt::async_client *client, int timeout, int handle = 0);
     
-    void clearFatal(unsigned int handle);
     void clearCritical(unsigned int handle);
     void clearWarning(unsigned int handle);
 
@@ -54,6 +58,7 @@ private:
     std::map<int, Fatal> m_fatals;
     std::map<int, Warning> m_warnings;
     int m_storedErrors;
+    int m_handle;
 };
 
 #endif // ERRORHANDLER_H

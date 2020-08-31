@@ -108,18 +108,30 @@ bool cisCompare(const std::string & str1, const std::string &str2)
 
 void decodeStatusResponse(std::string which, std::string &response)
 {
+    static int lastWarningHandle = 0;
+    static int lastErrorHandle = 0;
     mqtt::message_ptr pubmsg;
     nlohmann::json j;
     int pos = response.find_last_of(",");
     double voltage;
     
     if (pos != std::string::npos) {
+        if (lastErrorHandle > 0) {
+            g_errors.clearCritical(lastErrorHandle);
+            lastErrorHandle = 0;
+        }
         voltage = std::stod(response.substr(pos + 1));
         if (voltage > 3) {
+            if (lastWarningHandle > 0) {
+                g_errors.clearWarning(lastWarningHandle);
+                lastWarningHandle = 0;
+            }
             std::cout << "probe is operating normally, reporting voltage " << voltage;
         }
-        else 
+        else {
             std::cout << "probe is reporting an unusual voltage (" << voltage << "), it may not be operating correctly.";
+            lastWarningHandle = g_errors.warning(std::string(which + " probe is reporting undervoltage"), Configuration::instance()->m_mqtt, 0);
+        }
         if (which == "pH") {
             if (Configuration::instance()->m_mqtt->is_connected()) {
                 j["aquarium"]["device"]["ph"]["voltage"] = response.substr(pos + 1);
@@ -141,16 +153,22 @@ void decodeStatusResponse(std::string which, std::string &response)
     }
     else {
         std::cout << "probe status cannot be decoded";
+        lastErrorHandle = g_errors.critical(std::string(which + " probe is returning garbage"), Configuration::instance()->m_mqtt, 0);
     }
 }
 
 void decodeInfoResponse(std::string which, std::string &response)
 {
+    static int lastErrorHandle = 0;
     mqtt::message_ptr pubmsg;
     nlohmann::json j;
     int pos = response.find_last_of(",");
     
     if (pos != std::string::npos) {
+        if (lastErrorHandle > 0) {
+            g_errors.clearCritical(lastErrorHandle);
+            lastErrorHandle = 0;
+        }
         std::cout << "probe is running firmware version " << response.substr(pos + 1);
         if (which == "pH") {
             if (Configuration::instance()->m_mqtt->is_connected()) {
@@ -171,11 +189,13 @@ void decodeInfoResponse(std::string which, std::string &response)
     }
     else {
         std::cout << "probe info response cannot be decoded";
+        lastErrorHandle = g_errors.critical(std::string(which + " probe is returning garbage"), Configuration::instance()->m_mqtt, 0);
     }
 }
 
 void decodeTempCompensation(std::string which, std::string &response)
 {
+    static int lastErrorHandle = 0;
     mqtt::message_ptr pubmsg;
     nlohmann::json j;
 
@@ -200,7 +220,8 @@ void decodeTempCompensation(std::string which, std::string &response)
         }
     }
     else {
-        std::cout << "probe temp compensation response cannot be decoded: " << response;
+        std::cout << "probe temp compensation response cannot be decoded";
+        lastErrorHandle = g_errors.critical(std::string(which + " probe is returning garbage"), Configuration::instance()->m_mqtt, 0);
     }
 }
 
@@ -268,7 +289,6 @@ void sendLocalResultData()
 {
     mqtt::message_ptr pubmsg;
     nlohmann::json j;
-    unsigned int result = 0;
     std::time_t t = std::time(nullptr);
     char timebuff[100];
 
@@ -452,14 +472,22 @@ void aioConnected()
 {
     std::cout << "AIO connected!" << std::endl;
     Configuration::instance()->m_aioConnected = true;
+    g_errors.clearWarning(ErrorHandler::StaticErrorHandles::MqttConnectionLost);
 }
 
 void aioConnectionLost(const std::string &cause)
 {
     std::cout << __FUNCTION__ << ": AIO disconnected: " << cause << std::endl;
     Configuration::instance()->m_aioEnabled = false;
+    g_errors.warning("MQTT connection lost", Configuration::instance()->m_mqtt, 0, ErrorHandler::StaticErrorHandles::MqttConnectionLost);
 }
 
+/*
+ * \fn void mainloop()
+ * 
+ * The while(1) loop. This keeps the entire system alive while the async
+ * bits of code function in their own threads.
+ */
 void mainloop()
 {
     ITimer doUpdate;
@@ -565,6 +593,11 @@ bool parse_args(int argc, char **argv)
     return rval;
 }
 
+/**
+ * \fn int main(int argc, char *argv[])
+ * 
+ * Add more documentation here
+ */
 int main(int argc, char *argv[])
 {
     std::string progname = basename(argv[0]);

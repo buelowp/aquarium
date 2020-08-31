@@ -36,12 +36,12 @@ Fatal::Fatal(const Fatal& fe)
 {
     m_priority = fe.priority();
     m_message = fe.message();
-    m_timeout = fe.timeout();
+    m_timeout = 0;
     m_handle = fe.handle();
     m_mqtt = fe.client();
 }
 
-Fatal::Fatal(unsigned int handle, std::string msg, mqtt::async_client *client , unsigned int timeout) : BaseError(handle, msg, client, timeout)
+Fatal::Fatal(unsigned int handle, std::string msg, mqtt::async_client *client , unsigned int timeout) : BaseError(handle, msg, client, 0)
 {
     m_priority = BaseError::Priority::FATAL;
 }
@@ -50,22 +50,23 @@ Fatal::~Fatal()
 {
 }
 
+/**
+ * \fn void Fatal::cancel()
+ * 
+ * This function just falls through, since we cannot cancel
+ * a Fatal, it doesn't do anything.
+ */
 void Fatal::cancel()
 {
-    mqtt::message_ptr pubmsg;
-    nlohmann::json j;
-    
-    j["aquarium"]["error"]["type"] = "fatal";
-    j["aquarium"]["error"]["message"] = "program exit";
-    j["aquarium"]["error"]["handle"] = m_handle;
-    j["aquarium"]["error"]["timeout"] = m_timeout;
-
-    digitalWrite(Configuration::instance()->m_redLed, 0);
-
-    pubmsg = mqtt::make_message("aquarium/error", j.dump());
-    Configuration::instance()->m_mqtt->publish(pubmsg);
 }
 
+/**
+ * \fn void Fatal::activate()
+ * 
+ * Will create a fatal error, and the system should stop.
+ * Note, this error type cannot be canceled or stopped, so no timer
+ * is set in this function.
+ */
 void Fatal::activate()
 {
     mqtt::message_ptr pubmsg;

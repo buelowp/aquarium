@@ -25,55 +25,73 @@
 
 #include "errorhandler.h"
 
+/**
+ * \fn ErrorHandler::ErrorHandler()
+ * 
+ * Set m_handle to 100 because we want to reserve some values
+ * for static assignment, these would be known errors
+ */
 ErrorHandler::ErrorHandler()
 {
     m_storedErrors = 0;
+    m_handle = 100;
 }
 
 ErrorHandler::~ErrorHandler()
 {
 }
 
-unsigned int ErrorHandler::critical (unsigned int handle, std::string msg)
+unsigned int ErrorHandler::critical(std::string msg, mqtt::async_client *client, int timeout, int handle)
 {
-    Critical err(handle, msg);
+    if (handle > 0)
+        m_handle = handle;
+    else
+        m_handle++;
     
-    if (m_fatals.size() == 0) {
-        err.activate();
-    }
+    Critical err(m_handle, msg, client, timeout);
     
-    digitalWrite(Configuration::instance()->m_greenLed, 0);
-    m_criticals[handle] = err;
-    m_storedErrors++;
-    return handle;
-}
-
-unsigned int ErrorHandler::fatal ( unsigned int handle, std::string msg )
-{
-    Fatal err(handle, msg);
     err.activate();
     
     digitalWrite(Configuration::instance()->m_greenLed, 0);
-    m_fatals[handle] = err;
+    m_criticals[m_handle] = err;
     m_storedErrors++;
-    return handle;
+    return m_handle;
 }
 
-unsigned int ErrorHandler::warning ( unsigned int handle, std::string msg )
+unsigned int ErrorHandler::fatal(std::string msg, mqtt::async_client *client, int handle)
 {
-    Warning err(handle, msg);
+    if (handle > 0)
+        m_handle = handle;
+    else
+        m_handle++;
     
-    if (m_fatals.size() == 0 && m_criticals.size() == 0) {
-        err.activate();
-    }
+    Fatal err(m_handle, msg, client);
+    err.activate();
     
     digitalWrite(Configuration::instance()->m_greenLed, 0);
-    m_warnings[handle] = err;
+    m_fatals[m_handle] = err;
     m_storedErrors++;
-    return handle;
+    return m_handle;
 }
 
-void ErrorHandler::clearCritical ( unsigned int handle )
+unsigned int ErrorHandler::warning(std::string msg, mqtt::async_client *client, int timeout, int handle)
+{
+    if (handle > 0)
+        m_handle = handle;
+    else
+        m_handle++;
+    
+    Warning err(m_handle, msg, client, timeout);
+    
+    err.activate();
+    
+    digitalWrite(Configuration::instance()->m_greenLed, 0);
+    m_warnings[m_handle] = err;
+    m_storedErrors++;
+    return m_handle;
+}
+
+void ErrorHandler::clearCritical(unsigned int handle)
 {
     auto search = m_criticals.find(handle);
     if (search != m_criticals.end()) {
@@ -100,39 +118,7 @@ void ErrorHandler::clearCritical ( unsigned int handle )
     }
 }
 
-void ErrorHandler::clearFatal ( unsigned int handle )
-{
-    auto search = m_fatals.find(handle);
-    if (search != m_fatals.end()) {
-        Fatal err = search->second;
-        err.cancel();
-        m_fatals.erase(search);
-        m_storedErrors--;
-    }
-    
-    if (m_fatals.size() == 0) {
-        if (m_criticals.size()) {
-            auto it = m_criticals.begin();
-            Critical err = it->second;
-            err.activate();
-        }
-        else if (m_warnings.size()) {
-            auto it = m_warnings.begin();
-            Warning err = it->second;
-            err.activate();
-        }
-    }
-    else {
-        auto it = m_fatals.begin();
-        Fatal err = it->second;
-        err.activate();
-    }
-    if (m_storedErrors == 0) {
-        digitalWrite(Configuration::instance()->m_greenLed, 1);
-    }
-}
-
-void ErrorHandler::clearWarning ( unsigned int handle )
+void ErrorHandler::clearWarning(unsigned int handle)
 {
     auto search = m_warnings.find(handle);
     if (search != m_warnings.end()) {

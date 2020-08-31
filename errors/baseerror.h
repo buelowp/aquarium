@@ -64,8 +64,9 @@ public:
     unsigned int handle() const { return m_handle; }
     std::string message() const { return m_message; }
     unsigned int timeout() const { return m_timeout; }
-    unsigned int remaining() const;
+    int timeRemaining() const { return m_timer.remaining(); }
     mqtt::async_client* client() const { return m_mqtt; }
+    void setCancelCallback(std::function<void(int)> f) { m_callback = f; }
     
     virtual void cancel() = 0;
     virtual void activate() = 0;
@@ -76,6 +77,8 @@ protected:
     std::string m_message;
     unsigned int m_timeout;
     unsigned int m_handle;
+    ITimer m_timer;
+    std::function<void(int)> m_callback;
 };
 
 #endif // BASEERROR_H

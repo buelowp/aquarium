@@ -64,12 +64,25 @@ void Critical::cancel()
 
     pubmsg = mqtt::make_message("aquarium/error", j.dump());
     Configuration::instance()->m_mqtt->publish(pubmsg);
+
+    if (m_callback) {
+        try {
+            m_callback(m_handle);
+        }
+        catch (std::exception &e) {
+            syslog(LOG_ERR, "%s: Unable to execute function: %s\n", __PRETTY_FUNCTION__, e.what());
+        }
+    }
 }
 
 void Critical::activate()
 {
     mqtt::message_ptr pubmsg;
     nlohmann::json j;
+    
+    if (m_timeout >= 0) {
+        m_timer.setTimeout(std::bind(&Critical::cancel, this), m_timeout);
+    }
     
     j["aquarium"]["error"]["type"] = "critical";
     j["aquarium"]["error"]["message"] = m_message;
