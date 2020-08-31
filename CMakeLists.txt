@@ -1,5 +1,7 @@
 cmake_minimum_required (VERSION 3.0)
 
+project(aquarium)
+
 add_subdirectory(timer)
 add_subdirectory(mqtt)
 add_subdirectory(errors)

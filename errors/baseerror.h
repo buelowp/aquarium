@@ -64,6 +64,7 @@ public:
     unsigned int handle() const { return m_handle; }
     std::string message() const { return m_message; }
     unsigned int timeout() const { return m_timeout; }
+    unsigned int remaining() const;
     mqtt::async_client* client() const { return m_mqtt; }
     
     virtual void cancel() = 0;

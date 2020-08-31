@@ -33,7 +33,7 @@ BaseError::BaseError()
 }
 
 BaseError::BaseError(unsigned int handle, std::string msg, mqtt::async_client *client, unsigned int timeout) :
-    m_message(msg), m_timeout(timeout), m_mqtt(client), m_handle(handle)
+    m_mqtt(client), m_message(msg), m_timeout(timeout), m_handle(handle)
 {
 }
 

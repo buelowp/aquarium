@@ -30,6 +30,7 @@
 #include <thread>
 #include <cstring>
 #include <iostream>
+#include <chrono>
 #include <errno.h>
 #include <syslog.h>
 #include <time.h>
@@ -43,8 +44,10 @@ public:
     void setTimeout(std::function<void(void*)> function, int delay);
     void setInterval(std::function<void(void*)> function, int interval);
     void stop() { clear = true; }
+    int remaining() const;
     
 private:
+    std::chrono::system_clock::time_point m_start;
     void *m_instance;
     bool clear;
 };
