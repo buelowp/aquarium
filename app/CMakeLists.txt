@@ -18,7 +18,6 @@ include_directories (${CMAKE_SOURCE_DIR}/timer
                     ${CMAKE_SOURCE_DIR}/atlas 
                     ${CMAKE_SOURCE_DIR}/temperature
                     ${CMAKE_SOURCE_DIR}/mcp3008
-                    ${CMAKE_SOURCE_DIR}/mqtt
                     ${CMAKE_SOURCE_DIR}/configuration
                     ${CMAKE_SOURCE_DIR}/errors)
                     
@@ -30,5 +29,4 @@ target_link_libraries (${PROJECT_NAME} ${COMMON_FLAGS} Threads::Threads -lwiring
                     ${CMAKE_BINARY_DIR}/timer/libtimer.a 
                     ${CMAKE_BINARY_DIR}/mcp3008/libmcp3008.a 
                     ${CMAKE_BINARY_DIR}/temperature/libds18b20.a 
-                    ${CMAKE_BINARY_DIR}/errors/liberrors.a 
-                    ${CMAKE_BINARY_DIR}/mqtt/libmqtt.a)
+                    ${CMAKE_BINARY_DIR}/errors/liberrors.a)

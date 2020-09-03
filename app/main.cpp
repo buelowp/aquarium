@@ -36,6 +36,7 @@
 
 #include <wiringPi.h>
 #include <syslog.h>
+#include <signal.h>
 #include <libgen.h>
 #include <errno.h>
 #include <nlohmann/json.hpp>
@@ -70,6 +71,7 @@ std::mutex g_mqttMutex;
 std::condition_variable g_mqttCV;
 bool g_finished;
 bool g_stopRapidFireWaterLevel;
+bool g_exitImmediately;
 
 void eternalBlinkAndDie(int pin, int millihz)
 {
@@ -84,25 +86,30 @@ void eternalBlinkAndDie(int pin, int millihz)
 
 void initializeLeds()
 {
-    digitalWrite(Configuration::instance()->m_greenLed, 1);
-    digitalWrite(Configuration::instance()->m_yellowLed, 0);
-    digitalWrite(Configuration::instance()->m_redLed, 0);
+    pinMode(Configuration::instance()->m_greenLed, OUTPUT);
+    pinMode(Configuration::instance()->m_yellowLed, OUTPUT);
+    pinMode(Configuration::instance()->m_redLed, OUTPUT);
+    
+    digitalWrite(Configuration::instance()->m_greenLed, HIGH);
+    digitalWrite(Configuration::instance()->m_yellowLed, LOW);
+    digitalWrite(Configuration::instance()->m_redLed, LOW);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    digitalWrite(Configuration::instance()->m_greenLed, 0);
-    digitalWrite(Configuration::instance()->m_yellowLed, 1);
+    digitalWrite(Configuration::instance()->m_greenLed, LOW);
+    digitalWrite(Configuration::instance()->m_yellowLed, HIGH);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    digitalWrite(Configuration::instance()->m_yellowLed, 0);
-    digitalWrite(Configuration::instance()->m_redLed, 1);
+    digitalWrite(Configuration::instance()->m_yellowLed, LOW);
+    digitalWrite(Configuration::instance()->m_redLed, HIGH);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    digitalWrite(Configuration::instance()->m_redLed, 0);
-    digitalWrite(Configuration::instance()->m_greenLed, 1);
+    digitalWrite(Configuration::instance()->m_redLed, LOW);
+    digitalWrite(Configuration::instance()->m_greenLed, HIGH);
 }
 
 bool cisCompare(const std::string & str1, const std::string &str2)
 {
     return ((str1.size() == str2.size()) && std::equal(str1.begin(), str1.end(), str2.begin(), 
-            [](const char c1, const char c2){ return (c1 == c2 || std::toupper(c1) == std::toupper(c2)); }
+            [](const char c1, const char c2)
+            { return (c1 == c2 || std::toupper(c1) == std::toupper(c2)); }
             ));
 }
 
@@ -135,7 +142,7 @@ void decodeStatusResponse(std::string which, std::string &response)
         if (which == "pH") {
             if (Configuration::instance()->m_mqtt->is_connected()) {
                 j["aquarium"]["device"]["ph"]["voltage"] = response.substr(pos + 1);
-                pubmsg = mqtt::make_message("aquarium/device", j.dump());
+                pubmsg = mqtt::make_message("aquarium2/device", j.dump());
                 if (Configuration::instance()->m_mqttConnected)
                     Configuration::instance()->m_mqtt->publish(pubmsg);
             }
@@ -144,7 +151,7 @@ void decodeStatusResponse(std::string which, std::string &response)
         else if (which == "DO") {
             if (Configuration::instance()->m_mqtt->is_connected()) {
                 j["aquarium"]["device"]["dissolvedoxygen"]["version"] = response.substr(pos + 1);
-                pubmsg = mqtt::make_message("aquarium/device", j.dump());
+                pubmsg = mqtt::make_message("aquarium2/device", j.dump());
                 if (Configuration::instance()->m_mqttConnected)
                     Configuration::instance()->m_mqtt->publish(pubmsg);
             }
@@ -173,7 +180,7 @@ void decodeInfoResponse(std::string which, std::string &response)
         if (which == "pH") {
             if (Configuration::instance()->m_mqtt->is_connected()) {
                 j["aquarium"]["device"]["ph"]["version"] = response.substr(pos + 1);
-                pubmsg = mqtt::make_message("aquarium/device", j.dump());
+                pubmsg = mqtt::make_message("aquarium2/device", j.dump());
                 Configuration::instance()->m_mqtt->publish(pubmsg);
             }
             Configuration::instance()->m_phVersion = response.substr(pos + 1);
@@ -181,7 +188,7 @@ void decodeInfoResponse(std::string which, std::string &response)
         else if (which == "DO") {
             if (Configuration::instance()->m_mqtt->is_connected()) {
                 j["aquarium"]["device"]["dissolvedoxygen"]["version"] = response.substr(pos + 1);
-                pubmsg = mqtt::make_message("aquarium/device", j.dump());
+                pubmsg = mqtt::make_message("aquarium2/device", j.dump());
                 Configuration::instance()->m_mqtt->publish(pubmsg);
             }
             Configuration::instance()->m_o2Version = response.substr(pos + 1);
@@ -205,7 +212,7 @@ void decodeTempCompensation(std::string which, std::string &response)
         if (which == "pH") {
             if (Configuration::instance()->m_mqtt->is_connected()) {
                 j["aquarium"]["device"]["ph"]["tempcompensation"] = response.substr(pos + 1);
-                pubmsg = mqtt::make_message("aquarium/device", j.dump());
+                pubmsg = mqtt::make_message("aquarium2/device", j.dump());
                 Configuration::instance()->m_mqtt->publish(pubmsg);
             }
             Configuration::instance()->m_o2TempComp = response.substr(pos + 1);
@@ -213,7 +220,7 @@ void decodeTempCompensation(std::string which, std::string &response)
         else if (which == "DO") {
             if (Configuration::instance()->m_mqtt->is_connected()) {
                 j["aquarium"]["device"]["dissolvedoxygen"]["tempcompensation"] = response.substr(pos + 1);
-                pubmsg = mqtt::make_message("aquarium/device", j.dump());
+                pubmsg = mqtt::make_message("aquarium2/device", j.dump());
                 Configuration::instance()->m_mqtt->publish(pubmsg);
             }
             Configuration::instance()->m_o2TempComp = response.substr(pos + 1);
@@ -313,7 +320,7 @@ void sendLocalResultData()
     j["aquarium"]["ph"] = Configuration::instance()->m_ph->getPH();
     j["aquarium"]["oxygen"] = Configuration::instance()->m_oxygen->getDO();
     
-    pubmsg = mqtt::make_message("aquarium/data", j.dump());
+    pubmsg = mqtt::make_message("aquarium2/data", j.dump());
     if (Configuration::instance()->m_mqttConnected)
         Configuration::instance()->m_mqtt->publish(pubmsg);
 }
@@ -388,7 +395,7 @@ void sendTempProbeIdentification()
         it++;
         index++;
     }
-    pubmsg = mqtt::make_message("aquarium/devices", j.dump());
+    pubmsg = mqtt::make_message("aquarium2/devices", j.dump());
     Configuration::instance()->m_mqtt->publish(pubmsg);
 }
 
@@ -428,39 +435,44 @@ void rapidFireWaterLevelMessaging(void *t)
     }
     j["aquarium"]["waterlevel"] = Configuration::instance()->m_adc->reading(Configuration::instance()->m_adcWaterLevelIndex);
 
-    pubmsg = mqtt::make_message("aquarium/waterlevel/value", j.dump());
+    pubmsg = mqtt::make_message("aquarium2/waterlevel/value", j.dump());
     Configuration::instance()->m_mqtt->publish(pubmsg);
 }
 
 void mqttIncomingMessage(std::string topic, std::string message)
 {
     std::cout << __FUNCTION__ << ": Handling topic " << topic << std::endl;
-    if (topic == "aquarium/set/ds18b20") {
+    if (topic == "aquarium2/set/ds18b20") {
         nameTempProbe(message);
     }
-    if (topic == "aquarium/waterlevel/rapidfire/start") {
+    if (topic == "aquarium2/waterlevel/rapidfire/start") {
         ITimer *t = new ITimer();
         t->setInterval(rapidFireWaterLevelMessaging, 500);
         g_stopRapidFireWaterLevel = false;
     }
-    if (topic == "aquarium/waterlevel/rapidfire/stop") {
+    if (topic == "aquarium2/waterlevel/rapidfire/stop") {
         g_stopRapidFireWaterLevel = true;        
     }
 }
 
 void mqttConnectionLost(const std::string &cause)
 {
-    std::cout << "MQTT disconnected: " << cause << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << "MQTT disconnected: " << cause << std::endl;
     Configuration::instance()->m_mqttConnected = false;
+    g_errors.warning("MQTT connection lost", Configuration::instance()->m_mqtt, 0, ErrorHandler::StaticErrorHandles::MqttConnectionLost);
 }
 
 void mqttConnected()
 {
-    std::cout << "MQTT connected!" << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": MQTT connected!" << std::endl;
     Configuration::instance()->m_mqttConnected = true;
+
+    Configuration::instance()->m_mqtt->subscribe("aquarium2/set/#", 1);
+    Configuration::instance()->m_mqtt->subscribe("aquarium2/waterlevel/rapidfire/#", 1);
 
     g_finished = true;
     g_mqttCV.notify_all();
+    g_errors.clearWarning(ErrorHandler::StaticErrorHandles::MqttConnectionLost);
 }
 
 void aioIncomingMessage(std::string topic, std::string message)
@@ -470,16 +482,14 @@ void aioIncomingMessage(std::string topic, std::string message)
 
 void aioConnected()
 {
-    std::cout << "AIO connected!" << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << "AIO connected!" << std::endl;
     Configuration::instance()->m_aioConnected = true;
-    g_errors.clearWarning(ErrorHandler::StaticErrorHandles::MqttConnectionLost);
 }
 
 void aioConnectionLost(const std::string &cause)
 {
-    std::cout << __FUNCTION__ << ": AIO disconnected: " << cause << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__  << ": AIO disconnected: " << cause << std::endl;
     Configuration::instance()->m_aioEnabled = false;
-    g_errors.warning("MQTT connection lost", Configuration::instance()->m_mqtt, 0, ErrorHandler::StaticErrorHandles::MqttConnectionLost);
 }
 
 /*
@@ -496,10 +506,6 @@ void mainloop()
     ITimer tempCompensation;
     ITimer sendAIOUpdate;
     
-    Configuration::instance()->m_mqtt->subscribe("aquarium/set/#", 1);
-    Configuration::instance()->m_mqtt->subscribe("aquarium/waterlevel/rapidfire/#", 1);
-    Configuration::instance()->m_mqtt->start_consuming();
-
     auto phfunc = [](void*) { Configuration::instance()->m_ph->sendReadCommand(900); };
     auto dofunc = [](void*) { Configuration::instance()->m_oxygen->sendReadCommand(600); };
     auto updateLocalFunc = [](void*) { sendLocalResultData(); };
@@ -514,10 +520,11 @@ void mainloop()
     
     setTempCompensation();
     
-    while (1) {
+    while (!g_exitImmediately) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
     
+    std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": exiting main loop..." << std::endl;
     doUpdate.stop();
     phUpdate.stop();
     sendLocalUpdate.stop();
@@ -530,7 +537,7 @@ void usage(const char *name)
     std::cerr << "usage: " << name << " -h <server> -p <port> -n <unique id> -u <username> -k <password/key> -d" << std::endl;
     std::cerr << "\t-c alternate configuration file (defaults to $HOME/.config/aquarium.conf" << std::endl;
     std::cerr << "\t-h Print usage and exit" << std::endl;
-    std::cerr << "\t-d Daemonize the application to run in the background" << std::endl;
+    std::cerr << "\t-d Daemonize the application to run in the background (currently not functional)" << std::endl;
     exit(-1);
 }
 
@@ -593,6 +600,16 @@ bool parse_args(int argc, char **argv)
     return rval;
 }
 
+void handle_sigint(int sig)
+{
+    g_exitImmediately = true;
+    std::cerr << "Exiting due to signal";
+    syslog(LOG_ERR, "Exiting due to signal %d", sig);
+    digitalWrite(Configuration::instance()->m_greenLed, LOW);
+    digitalWrite(Configuration::instance()->m_yellowLed, LOW);
+    digitalWrite(Configuration::instance()->m_redLed, HIGH);
+}
+
 /**
  * \fn int main(int argc, char *argv[])
  * 
@@ -602,12 +619,17 @@ int main(int argc, char *argv[])
 {
     std::string progname = basename(argv[0]);
     g_finished = false;
-    
-    g_finished = false;
+    g_exitImmediately = false;
     
     openlog(progname.c_str(), LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
     
     syslog(LOG_NOTICE, "Application startup");
+    
+    /** Do our best to clean up and exit if we can **/
+    signal(SIGINT, handle_sigint);
+    signal(SIGILL, handle_sigint);
+    signal(SIGABRT, handle_sigint);
+    signal(SIGFPE, handle_sigint);
     
     wiringPiSetupGpio();
     piHiPri(99);
@@ -627,11 +649,13 @@ int main(int argc, char *argv[])
 
     initializeLeds();
 
+    std::unique_lock<std::mutex> lk(g_mqttMutex);
     Configuration::instance()->createLocalConnection();
     Configuration::instance()->createAIOConnection();
 
-    std::unique_lock<std::mutex> lk(g_mqttMutex);
     g_mqttCV.wait(lk, []{return g_finished;});
+
+    Configuration::instance()->m_mqtt->start_consuming();
 
     Configuration::instance()->m_oxygen->setCallback(doCallback);
     Configuration::instance()->m_ph->setCallback(phCallback);

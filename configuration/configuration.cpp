@@ -490,7 +490,7 @@ bool Configuration::createLocalConnection()
 {
     std::string server("tcp://");
 
-    mqtt::connect_options connopts(m_aioUserName, m_aioKey);
+    mqtt::connect_options connopts;
     connopts.set_keep_alive_interval(20);
     connopts.set_clean_session(true);
     connopts.set_automatic_reconnect(1, 10);
@@ -498,20 +498,20 @@ bool Configuration::createLocalConnection()
     server += m_mqttServer;
     server += ":";
     server += std::to_string(m_mqttPort);
+    std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": " << server << std::endl;
 
     m_mqtt = new mqtt::async_client(server, m_localId);
-    m_localCallback = new LocalMQTTCallback(m_mqtt, connopts);
-    m_localCallback->setMessageCallback(mqttIncomingMessage);
-    m_localCallback->setConnectionLostCallback(mqttConnectionLost);
+    m_localCallback = new callback();
     m_localCallback->setConnectedCallback(mqttConnected);
+    m_localCallback->setDisconnectedCallback(mqttConnectionLost);
     m_mqtt->set_callback(*m_localCallback);
 
     try {
-        std::cout << "Connecting to the Local MQTT server at: " << server << std::endl << std::flush;
-        m_mqtt->connect(connopts, nullptr, *m_localCallback);
+        std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Connecting to the Local MQTT server at: " << m_mqtt->get_server_uri() << std::endl << std::flush;
+        m_mqtt->connect(connopts);
     }
     catch (const mqtt::exception&) {
-        std::cerr << "ERROR: Unable to connect to MQTT server: '" << m_mqttServer << "'" << std::endl;
+        std::cerr << __PRETTY_FUNCTION__ << ": ERROR: Unable to connect to MQTT server: '" << m_mqtt->get_server_uri() << "'" << std::endl;
         return false;
     }
     return true;
@@ -543,15 +543,14 @@ bool Configuration::createAIOConnection()
     server += std::to_string(m_aioPort);
 
     m_aio = new mqtt::async_client(server, m_localId);
-    m_aioCallback = new LocalMQTTCallback(m_aio, *m_aioConnOpts);
-    m_aioCallback->setMessageCallback(aioIncomingMessage);
-    m_aioCallback->setConnectionLostCallback(aioConnectionLost);
+    m_aioCallback = new callback();
     m_aioCallback->setConnectedCallback(aioConnected);
+    m_aioCallback->setDisconnectedCallback(aioConnectionLost);
     m_aio->set_callback(*m_aioCallback);
 
     try {
         std::cout << "Connecting to AIO server at " << server << std::endl << std::flush;
-        m_aio->connect(*m_aioConnOpts, nullptr, *m_aioCallback);
+        m_aio->connect(*m_aioConnOpts);
     }
     catch (const mqtt::exception&) {
         std::cerr << "ERROR: Unable to connect to AIO server: '" << m_aioServer << "'" << std::endl;

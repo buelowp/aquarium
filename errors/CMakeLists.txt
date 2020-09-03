@@ -18,7 +18,6 @@ include_directories (${CMAKE_SOURCE_DIR}/timer
                     ${CMAKE_SOURCE_DIR}/atlas 
                     ${CMAKE_SOURCE_DIR}/temperature
                     ${CMAKE_SOURCE_DIR}/mcp3008
-                    ${CMAKE_SOURCE_DIR}/mqtt
                     ${CMAKE_SOURCE_DIR}/configuration)
 
 add_library (${PROJECT_NAME} STATIC ${SOURCES})

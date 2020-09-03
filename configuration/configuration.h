@@ -79,8 +79,8 @@ public:
     mqtt::connect_options *m_aioConnOpts;
     mqtt::ssl_options m_localSSLOpts;
     mqtt::ssl_options m_aioSSLOpts;
-    LocalMQTTCallback *m_localCallback;
-    LocalMQTTCallback *m_aioCallback;
+    callback *m_localCallback;
+    callback *m_aioCallback;
     DissolvedOxygen *m_oxygen;
     PotentialHydrogen *m_ph;
     Temperature *m_temp;
