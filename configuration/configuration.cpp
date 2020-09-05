@@ -49,32 +49,32 @@ bool Configuration::updateArray(std::string array, std::map<std::string, std::st
         config.readFile(m_configFile.c_str());
     }
     catch(const libconfig::FileIOException &fioex) {
-        std::cerr << "I/O error while reading file." << std::endl;
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << "I/O error while reading file." << std::endl;
         return false;
     }
     catch(const libconfig::ParseException &pex) {
-        std::cerr << "Parse error at " << pex.getFile() << ":" << pex.getLine() << " - " << pex.getError() << std::endl;
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << "Parse error at " << pex.getFile() << ":" << pex.getLine() << " - " << pex.getError() << std::endl;
         return false;
     }
     
     libconfig::Setting &root = config.getRoot();
     
     if (!root.exists(array)) {
-        fprintf(stderr, "Array %s does not exist, use addArray()\n", array.c_str());
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Array " << array.c_str() << "does not exist, use addArray()"  << std::endl;
         return false;
     }
 
     try {
         libconfig::Setting &arrayEntry = root[array.c_str()];
         for (const auto& [key, value] : entry) {
-            std::cout << __FUNCTION__ << ": Searching for " << key << ":" << value << std::endl;
+            std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Searching for " << key << ":" << value << std::endl;
             bool found = false;
             for (int i = 0; i < arrayEntry.getLength(); i++) {
                 const libconfig::Setting &device = arrayEntry[i];
                 std::string serial;
                 std::string name;
                 if (!device.lookupValue("device", serial) || !device.lookupValue("name", name)) {
-                    fprintf(stderr, "Unable to find device or name in array...\n");
+                    std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Unable to find device or name in array..." << std::endl;
                     return false;
                 }
                 
@@ -90,16 +90,16 @@ bool Configuration::updateArray(std::string array, std::map<std::string, std::st
         }
     }
     catch (const libconfig::SettingException &e) {
-        fprintf(stderr, "Unable to add elements to the new array: %s\n", e.what());
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Unable to add elements to the new array: " << e.what() << std::endl;
         return false;
     }
     
     try {
         config.writeFile(m_configFile.c_str());
-        std::cerr << "Updated configuration successfully written to: " << m_configFile << std::endl;
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Updated configuration successfully written to: " << m_configFile << std::endl;
     }
     catch(const libconfig::FileIOException &fioex) {
-        std::cerr << "I/O error while writing file: " << m_configFile << std::endl;
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": I/O error while writing file: " << m_configFile << std::endl;
         return false;
     }
     
@@ -119,11 +119,11 @@ bool Configuration::addArray(std::string array, std::map<std::string, std::strin
         config.readFile(m_configFile.c_str());
     }
     catch(const libconfig::FileIOException &fioex) {
-        std::cerr << "I/O error while reading file." << std::endl;
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": I/O error while reading file." << std::endl;
         return false;
     }
     catch(const libconfig::ParseException &pex) {
-        std::cerr << "Parse error at " << pex.getFile() << ":" << pex.getLine() << " - " << pex.getError() << std::endl;
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Parse error at " << pex.getFile() << ":" << pex.getLine() << " - " << pex.getError() << std::endl;
         return false;
     }
     
@@ -137,21 +137,21 @@ bool Configuration::addArray(std::string array, std::map<std::string, std::strin
         libconfig::Setting &arrayEntry = root[array.c_str()];
         for (const auto& [key, value] : entry) {
             libconfig::Setting &device = arrayEntry.add(libconfig::Setting::TypeGroup);
-            std::cout << "Adding " << key << ":" << value << std::endl;
+            std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Adding " << key << ":" << value << std::endl;
             device.add("device", libconfig::Setting::TypeString) = key;
             device.add("name", libconfig::Setting::TypeString) = value;
         }
     }
     catch (const libconfig::SettingTypeException &e) {
-        fprintf(stderr, "Unable to add elements to the new array: %s\n", e.what());
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Unable to add elements to the new array: " << e.what() << std::endl;
     }
     
     try {
         config.writeFile(m_configFile.c_str());
-        std::cerr << "Updated configuration successfully written to: " << m_configFile << std::endl;
+        std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Updated configuration successfully written to: " << m_configFile << std::endl;
     }
     catch(const libconfig::FileIOException &fioex) {
-        std::cerr << "I/O error while writing file: " << m_configFile << std::endl;
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": I/O error while writing file: " << m_configFile << std::endl;
         return false;
     }
     return true;
@@ -165,11 +165,11 @@ bool Configuration::setValue(std::string key, std::string value)
         config.readFile(m_configFile.c_str());
     }
     catch(const libconfig::FileIOException &fioex) {
-        std::cerr << "I/O error while reading file." << std::endl;
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": I/O error while reading file." << std::endl;
         return false;
     }
     catch(const libconfig::ParseException &pex) {
-        std::cerr << "Parse error at " << pex.getFile() << ":" << pex.getLine() << " - " << pex.getError() << std::endl;
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Parse error at " << pex.getFile() << ":" << pex.getLine() << " - " << pex.getError() << std::endl;
         return false;
     }
     
@@ -184,10 +184,10 @@ bool Configuration::setValue(std::string key, std::string value)
     
     try {
         config.writeFile(m_configFile.c_str());
-        std::cerr << "Updated configuration successfully written to: " << m_configFile << std::endl;
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Updated configuration successfully written to: " << m_configFile << std::endl;
     }
     catch(const libconfig::FileIOException &fioex) {
-        std::cerr << "I/O error while writing file: " << m_configFile << std::endl;
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": I/O error while writing file: " << m_configFile << std::endl;
         return false;
     }
     return true;
@@ -205,16 +205,16 @@ bool Configuration::readConfigFile()
     m_temp = new Temperature();
     tempDevices = m_temp->devices();
 
-    std::cout << __FUNCTION__ << ":" << __LINE__ << ": Staring config file read for " << m_configFile << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__  << ":" << __LINE__ << ": Staring config file read for " << m_configFile << std::endl;
     try {
         config.readFile(m_configFile.c_str());
     }
     catch(const libconfig::FileIOException &fioex) {
-        std::cerr << "I/O error while reading file." << std::endl;
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": I/O error while reading file." << std::endl;
         return false;
     }
     catch(const libconfig::ParseException &pex) {
-        std::cerr << "Parse error at " << pex.getFile() << ":" << pex.getLine() << " - " << pex.getError() << std::endl;
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Parse error at " << pex.getFile() << ":" << pex.getLine() << " - " << pex.getError() << std::endl;
         return false;
     }
 
@@ -229,7 +229,7 @@ bool Configuration::readConfigFile()
         }
         
         syslog(LOG_INFO, "Using %s as our MQTT identifier", m_localId.c_str());
-        fprintf(stderr, "Using %s as our MQTT identifier\n", m_localId.c_str());
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Using " << m_localId.c_str() << " as our MQTT identifier"  << std::endl;
         
         if (root.exists("enable_adafruitio")) {
             root.lookupValue("enable_adafruitio", m_aioEnabled);
@@ -257,7 +257,7 @@ bool Configuration::readConfigFile()
             else {
                 m_aioEnabled = false;
                 syslog(LOG_ERR, "No AIO username in config, disabling AdafruitIO connection");
-                std::cerr << "No AIO username in config, disabling AdafruitIO connection" << std::endl;
+                std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": No AIO username in config, disabling AdafruitIO connection" << std::endl;
             }
             if (root.exists("adafruitio_key")) {
                 root.lookupValue("adafruitio_key", m_aioKey);
@@ -265,17 +265,17 @@ bool Configuration::readConfigFile()
             else {
                 m_aioEnabled = false;
                 syslog(LOG_ERR, "No AIO key in config, disabling AdafruitIO connection");
-                std::cerr << "No AIO key in config, disabling AdafruitIO connection" << std::endl;
+                std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": No AIO key in config, disabling AdafruitIO connection" << std::endl;
             }
             
             if (m_aioEnabled) {
                 syslog(LOG_INFO, "Access to AdafruiIO is enabled to %s on port %d for user %s", m_aioServer.c_str(), m_aioPort, m_aioUserName.c_str());
-                fprintf(stderr, "Access to AdafruiIO is enabled to %s on port %d for user %s:%s\n", m_aioServer.c_str(), m_aioPort, m_aioUserName.c_str(), m_aioKey.c_str());
+                std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Access to AdafruiIO is enabled to " << m_aioServer << " on port " << m_aioPort << " for user " << m_aioUserName.c_str() << ":" << m_aioKey.c_str() << std::endl;
             }
         }
         else {
             syslog(LOG_INFO, "Access to AdafruitIO is disabled");
-            fprintf(stderr, "Access to AdafruitIO is disabled\n");
+            std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Access to AdafruitIO is disabled" << std::endl;
         }
         
         if (root.exists("mqtt_port")) {
@@ -296,17 +296,17 @@ bool Configuration::readConfigFile()
                 root.lookupValue("mqtt_password", m_mqttPassword);
             }
             syslog(LOG_INFO, "MQTT is connecting to %s:%d for user %s", m_mqttServer.c_str(), m_mqttPort, m_mqttUserName.c_str());
-            fprintf(stderr, "MQTT is connecting to %s:%d for user %s\n", m_mqttServer.c_str(), m_mqttPort, m_mqttUserName.c_str());
+            std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": MQTT is connecting to " << m_mqttServer << ":" << m_mqttPort << " for user " << m_mqttUserName.c_str() << std::endl;
         }
         else {
             syslog(LOG_INFO, "MQTT is connecting to %s:%d", m_mqttServer.c_str(), m_mqttPort);
-            fprintf(stderr, "MQTT is connecting to %s:%d\n", m_mqttServer.c_str(), m_mqttPort);
+            std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": MQTT is connecting to " << m_mqttServer.c_str() << ":" << m_mqttPort << std::endl;
         }
         
         if (root.exists("onewire_pin")) {
             root.lookupValue("onewire_pin", m_onewirepin);
             syslog(LOG_INFO, "DS18B20 bus on pin %d", m_onewirepin);
-            fprintf(stderr, "DS18B20 bus on pin %d\n", m_onewirepin);
+            std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": DS18B20 bus on pin " << m_onewirepin << std::endl;
         }
         else {
             m_onewirepin = -1;
@@ -349,34 +349,34 @@ bool Configuration::readConfigFile()
         if (root.exists("phsensor_address")) {
             root.lookupValue("phsensor_address", m_phSensorAddress);
             syslog(LOG_INFO, "PH device on i2c address %x", m_phSensorAddress);
-            fprintf(stderr, "PH device on i2c address %x\n", m_phSensorAddress);
+            std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": PH device on i2c address " << m_phSensorAddress << std::endl;
         }
         else {
             m_phSensorAddress = 0;
             syslog(LOG_INFO, "PH device disabled");
-            fprintf(stderr, "PH device disabled\n");
+            std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": PH device disabled" << std::endl;
         }
 
         if (root.exists("o2sensor_address")) {
             root.lookupValue("o2sensor_address", m_o2SensorAddress);
             syslog(LOG_INFO, "Oxygen sensor on i2c address %x", m_o2SensorAddress);
-            fprintf(stderr, "Oxygen sensor on i2c address %x\n", m_o2SensorAddress);
+            std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Oxygen sensor on i2c address " << m_o2SensorAddress << std::endl;
         }
         else {
             m_o2SensorAddress = 0;
             syslog(LOG_INFO, "Oxygen sensor disabled");
-            fprintf(stderr, "Oxygen sensor disabled\n");
+            std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Oxygen sensor disabled" << std::endl;
         }
         
         if (root.exists("ecsensor_address")) {
             root.lookupValue("ecsensor_address", m_ecSensorAddress);
             syslog(LOG_INFO, "Conductivity sensor on i2c address %x", m_ecSensorAddress);
-            fprintf(stderr, "Conductivity sensor on i2c address %x\n", m_ecSensorAddress);
+            std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Conductivity sensor on i2c address " << m_ecSensorAddress << std::endl;
         }
         else {
             m_ecSensorAddress = 0;
             syslog(LOG_INFO, "Conductivity sensor disabled");
-            fprintf(stderr, "Conductivity sensor disabled\n");
+            std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Conductivity sensor disabled" << std::endl;
         }
 
         try {
@@ -395,7 +395,7 @@ bool Configuration::readConfigFile()
         }
         catch (libconfig::SettingException &e) {
             syslog(LOG_ERR, "Error configuring logging: : %s", e.what());
-            fprintf(stderr, "Error configuring logging: %s\n", e.what());
+            std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Error configuring logging: " << e.what() << std::endl;
         }
         
         try {
@@ -403,7 +403,7 @@ bool Configuration::readConfigFile()
                 const libconfig::Setting &probe = root["ds18b20"];
                 if (tempDevices.size() > probe.getLength()) {
                     syslog(LOG_WARNING, "New DS18B20 device detected, adding to configuration");
-                    fprintf(stderr, "New DS18B20 device detected, adding to configuration\n");                    
+                    std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": New DS18B20 device detected, adding to configuration" << std::endl;                    
                     m_newTempDeviceFound = true;
                 }
                 for (int i = 0; i < probe.getLength(); i++) {
@@ -413,13 +413,13 @@ bool Configuration::readConfigFile()
                     
                     auto found = tempDevices.find(serial);
                     if (found != tempDevices.end()) {
-                        std::cout << "Renaming DS18B20 device " << serial << " to " << name << std::endl;
+                        std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << "Renaming DS18B20 device " << serial << " to " << name << std::endl;
                         m_temp->setNameForDevice(serial, name);
                     }
                     else { // TODO: Figure out how to report this as an error!
                         m_invalidTempDeviceInConfig.push_back(serial);
                         syslog(LOG_WARNING, "DS18B20 probe %s in config, but not connected...", serial.c_str());
-                        fprintf(stderr, "DS18B20 probe %s in config, but not connected...\n", serial.c_str());
+                        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": DS18B20 probe " << serial << " in config, but not connected..." << std::endl;
                     }
                 }
             }
@@ -430,13 +430,13 @@ bool Configuration::readConfigFile()
         }
         catch (libconfig::SettingException &e) {
             syslog(LOG_ERR, "Cannot update ds18b20 array: %s", e.what());
-            fprintf(stderr, "Cannot update ds18b20 array: %s\n", e.what());
+            std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Cannot update ds18b20 array: " << e.what() << std::endl;
         }
             
     }
     catch (libconfig::SettingException &e) {
         syslog(LOG_ERR, "SettingException: %s", e.what());
-        fprintf(stderr, "SettingException: %s\n", e.what());
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": SettingException: " << e.what() << std::endl;
     }
 
     if (noDeviceArray)
@@ -464,7 +464,7 @@ void Configuration::generateLocalId()
 	ifs.open("/proc/sys/kernel/hostname");
 	if (!ifs) {
 		syslog(LOG_ERR, "Unable to open /proc/sys/kernel/hostname for reading");
-		fprintf(stderr, "Unable to open /proc/sys/kernel/hostname for reading");
+		std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Unable to open /proc/sys/kernel/hostname for reading" << std::endl;
 		m_localId = "Aquarium";
 	}
 	m_localId.assign((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
@@ -473,7 +473,7 @@ void Configuration::generateLocalId()
 	}
 	catch (std::out_of_range &e) {
 		syslog(LOG_ERR, "handled exception: %s", e.what());
-		fprintf(stderr, "handled exception: %s\n", e.what());
+		std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": handled exception: " << e.what() << std::endl;
 	}
 
     syslog(LOG_INFO, "Assigning %s as device name", m_localId.c_str());
@@ -549,11 +549,11 @@ bool Configuration::createAIOConnection()
     m_aio->set_callback(*m_aioCallback);
 
     try {
-        std::cout << "Connecting to AIO server at " << server << std::endl << std::flush;
+        std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << "Connecting to AIO server at " << server << std::endl << std::flush;
         m_aio->connect(*m_aioConnOpts);
     }
     catch (const mqtt::exception&) {
-        std::cerr << "ERROR: Unable to connect to AIO server: '" << m_aioServer << "'" << std::endl;
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << "ERROR: Unable to connect to AIO server: '" << m_aioServer << "'" << std::endl;
         return false;
     }
     return true;

@@ -189,8 +189,6 @@ void writeCalibrationData()
 
 void phCallback(int cmd, std::string response)
 {
-    int calibration = 0;
-    
     switch (cmd) {
         case AtlasScientificI2C::INFO:
             break;

@@ -37,11 +37,11 @@ Temperature::Temperature()
     }
     closedir(dirp);
     
-    for (int i = 0; i < v.size(); i++) {
+    for (std::vector<std::string>::size_type i = 0; i < v.size(); i++) {
         if (v.at(i).find("28-") != std::string::npos) {
             m_devices[v.at(i)] = v.at(i);
             syslog(LOG_INFO, "Found DS18B20 device %s", v.at(i).c_str());
-            std::cout << "Found DS18B20 device " << v.at(i).c_str() << std::endl;
+            std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Found DS18B20 device " << v.at(i).c_str() << std::endl;
         }
     }
     if (m_devices.size() > 0)
@@ -49,7 +49,7 @@ Temperature::Temperature()
     else
         syslog(LOG_ERR, "No 1-wire devices found");
     
-    std::cout << __FUNCTION__ << ": Found " << m_devices.size() << " devices" << std::endl;
+    std::cout  << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Found " << m_devices.size() << " devices" << std::endl;
 }
 
 Temperature::Temperature(std::string device, std::string name)
@@ -103,7 +103,7 @@ double Temperature::getTemperature(std::string device)
         
     if (fs.is_open() && m_enabled) {
         contents << fs.rdbuf();
-        int pos = contents.str().find("t=");
+        std::string::size_type pos = contents.str().find("t=");
         if (pos != std::string::npos) {
             data = contents.str().substr(pos + 2, 5);
         }
@@ -113,7 +113,7 @@ double Temperature::getTemperature(std::string device)
         }
         catch (std::exception &e) {
             syslog(LOG_ERR, "Unable to decode %s, exception is %s\n", data.c_str(), e.what());
-            std::cerr << __FUNCTION__ << "Unable to decode " << data << std::endl;
+            std::cerr  << __PRETTY_FUNCTION__ << ":" << __LINE__ << "Unable to decode " << data << std::endl;
         }
     }
     return 0;

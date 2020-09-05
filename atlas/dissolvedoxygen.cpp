@@ -96,7 +96,7 @@ void DissolvedOxygen::getLastResponse(std::string &r)
     
     r.clear();
     
-    for (int i = 0; i < m_lastResponse.size(); i++) {
+    for (std::vector<uint8_t>::size_type i = 0; i < m_lastResponse.size(); i++) {
         r += static_cast<char>(m_lastResponse[i]);
     }
 }
@@ -232,7 +232,7 @@ void DissolvedOxygen::printBuffer(std::vector<uint8_t> &packet)
     
     oldState.copyfmt(std::cout);
     std::cout << "Packet: ";
-    for (int i = 0; i < packet.size(); i++) {
+    for (std::vector<uint8_t>::size_type i = 0; i < packet.size(); i++) {
         std::cout << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(packet[i]) << " ";
     }
     std::cout << std::endl;
@@ -259,7 +259,7 @@ void DissolvedOxygen::setTempCompensation(double temp)
     std::string val = ss.str();
     uint8_t buf[16] = {0};
     
-    for (int i = 0; i < val.size(); i++) {
+    for (std::string::size_type i = 0; i < val.size(); i++) {
         buf[i] = val[i];
     }
     setTempCompensation(buf, val.size());
@@ -291,7 +291,7 @@ void DissolvedOxygen::setTempCompensationAndRead(double temp)
     std::string val = ss.str();
     uint8_t buf[16] = {0};
     
-    for (int i = 0; i < val.size(); i++) {
+    for (std::string::size_type i = 0; i < val.size(); i++) {
         buf[i] = val[i];
     }
     setTempCompensationAndRead(buf, val.size());

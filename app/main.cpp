@@ -69,6 +69,8 @@
 ErrorHandler g_errors;
 std::mutex g_mqttMutex;
 std::condition_variable g_mqttCV;
+std::mutex g_decodeMutex;
+std::mutex g_statusMutex;
 bool g_finished;
 bool g_stopRapidFireWaterLevel;
 bool g_exitImmediately;
@@ -117,11 +119,11 @@ void decodeStatusResponse(std::string which, std::string &response)
 {
     static int lastWarningHandle = 0;
     static int lastErrorHandle = 0;
-    mqtt::message_ptr pubmsg;
     nlohmann::json j;
-    int pos = response.find_last_of(",");
+    std::string::size_type pos = response.find_last_of(",");
     double voltage;
     
+    g_statusMutex.lock();
     if (pos != std::string::npos) {
         if (lastErrorHandle > 0) {
             g_errors.clearCritical(lastErrorHandle);
@@ -133,69 +135,58 @@ void decodeStatusResponse(std::string which, std::string &response)
                 g_errors.clearWarning(lastWarningHandle);
                 lastWarningHandle = 0;
             }
-            std::cout << "probe is operating normally, reporting voltage " << voltage;
+            std::cout << ": probe is operating normally, reporting voltage " << voltage;
         }
         else {
-            std::cout << "probe is reporting an unusual voltage (" << voltage << "), it may not be operating correctly.";
+            std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": probe is reporting an unusual voltage (" << voltage << "), it may not be operating correctly." << std::endl;
             lastWarningHandle = g_errors.warning(std::string(which + " probe is reporting undervoltage"), Configuration::instance()->m_mqtt, 0);
         }
         if (which == "pH") {
-            if (Configuration::instance()->m_mqtt->is_connected()) {
-                j["aquarium"]["device"]["ph"]["voltage"] = response.substr(pos + 1);
-                pubmsg = mqtt::make_message("aquarium2/device", j.dump());
-                if (Configuration::instance()->m_mqttConnected)
-                    Configuration::instance()->m_mqtt->publish(pubmsg);
-            }
+            j["aquarium"]["device"]["ph"]["voltage"] = response.substr(pos + 1);
             Configuration::instance()->m_phVoltage = response.substr(pos + 1);
         }
         else if (which == "DO") {
-            if (Configuration::instance()->m_mqtt->is_connected()) {
-                j["aquarium"]["device"]["dissolvedoxygen"]["version"] = response.substr(pos + 1);
-                pubmsg = mqtt::make_message("aquarium2/device", j.dump());
-                if (Configuration::instance()->m_mqttConnected)
-                    Configuration::instance()->m_mqtt->publish(pubmsg);
-            }
+            j["aquarium"]["device"]["dissolvedoxygen"]["version"] = response.substr(pos + 1);
             Configuration::instance()->m_o2Voltage = response.substr(pos + 1);
         }
+        if (Configuration::instance()->m_mqttConnected)
+            Configuration::instance()->m_mqtt->publish("aquarium2/device", j.dump());
     }
     else {
-        std::cout << "probe status cannot be decoded";
+        std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": probe status cannot be decoded" << std::endl;
         lastErrorHandle = g_errors.critical(std::string(which + " probe is returning garbage"), Configuration::instance()->m_mqtt, 0);
     }
+    g_statusMutex.unlock();
 }
 
 void decodeInfoResponse(std::string which, std::string &response)
 {
     static int lastErrorHandle = 0;
-    mqtt::message_ptr pubmsg;
     nlohmann::json j;
-    int pos = response.find_last_of(",");
+    std::string::size_type pos = response.find_last_of(",");
     
     if (pos != std::string::npos) {
         if (lastErrorHandle > 0) {
             g_errors.clearCritical(lastErrorHandle);
             lastErrorHandle = 0;
         }
-        std::cout << "probe is running firmware version " << response.substr(pos + 1);
+        std::cout << ": probe is running firmware version " << response.substr(pos + 1);
         if (which == "pH") {
-            if (Configuration::instance()->m_mqtt->is_connected()) {
-                j["aquarium"]["device"]["ph"]["version"] = response.substr(pos + 1);
-                pubmsg = mqtt::make_message("aquarium2/device", j.dump());
-                Configuration::instance()->m_mqtt->publish(pubmsg);
-            }
+            std::cout << ": PH version" << response.substr(pos + 1);
+            j["aquarium"]["device"]["ph"]["version"] = response.substr(pos + 1);
             Configuration::instance()->m_phVersion = response.substr(pos + 1);
         }
         else if (which == "DO") {
-            if (Configuration::instance()->m_mqtt->is_connected()) {
-                j["aquarium"]["device"]["dissolvedoxygen"]["version"] = response.substr(pos + 1);
-                pubmsg = mqtt::make_message("aquarium2/device", j.dump());
-                Configuration::instance()->m_mqtt->publish(pubmsg);
-            }
+            std::cout << ": DO version" << response.substr(pos + 1) << response.substr(pos + 1);
+            j["aquarium"]["device"]["dissolvedoxygen"]["version"] = response.substr(pos + 1);
             Configuration::instance()->m_o2Version = response.substr(pos + 1);
         }
+
+        if (Configuration::instance()->m_mqttConnected)
+            Configuration::instance()->m_mqtt->publish("aquarium2/device", j.dump());
     }
     else {
-        std::cout << "probe info response cannot be decoded";
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": probe info response cannot be decoded" << std::endl;
         lastErrorHandle = g_errors.critical(std::string(which + " probe is returning garbage"), Configuration::instance()->m_mqtt, 0);
     }
 }
@@ -203,31 +194,23 @@ void decodeInfoResponse(std::string which, std::string &response)
 void decodeTempCompensation(std::string which, std::string &response)
 {
     static int lastErrorHandle = 0;
-    mqtt::message_ptr pubmsg;
     nlohmann::json j;
 
-    int pos = response.find_last_of(",");
+    std::string::size_type pos = response.find_last_of(",");
     if (pos != std::string::npos) {
-        std::cout << "probe has a temp compensation value of " << response.substr(pos + 1) << "C";
+        std::cout << ": probe has a temp compensation value of " << response.substr(pos + 1) << "C";
         if (which == "pH") {
-            if (Configuration::instance()->m_mqtt->is_connected()) {
-                j["aquarium"]["device"]["ph"]["tempcompensation"] = response.substr(pos + 1);
-                pubmsg = mqtt::make_message("aquarium2/device", j.dump());
-                Configuration::instance()->m_mqtt->publish(pubmsg);
-            }
+            j["aquarium"]["device"]["ph"]["tempcompensation"] = response.substr(pos + 1);
             Configuration::instance()->m_o2TempComp = response.substr(pos + 1);
         }
         else if (which == "DO") {
-            if (Configuration::instance()->m_mqtt->is_connected()) {
-                j["aquarium"]["device"]["dissolvedoxygen"]["tempcompensation"] = response.substr(pos + 1);
-                pubmsg = mqtt::make_message("aquarium2/device", j.dump());
-                Configuration::instance()->m_mqtt->publish(pubmsg);
-            }
+            j["aquarium"]["device"]["dissolvedoxygen"]["tempcompensation"] = response.substr(pos + 1);
             Configuration::instance()->m_o2TempComp = response.substr(pos + 1);
         }
+        Configuration::instance()->m_mqtt->publish("aquarium2/device", j.dump());
     }
     else {
-        std::cout << "probe temp compensation response cannot be decoded";
+        std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": probe temp compensation response cannot be decoded" << std::endl;
         lastErrorHandle = g_errors.critical(std::string(which + " probe is returning garbage"), Configuration::instance()->m_mqtt, 0);
     }
 }
@@ -237,23 +220,23 @@ void phCallback(int cmd, std::string response)
     switch (cmd) {
         case AtlasScientificI2C::INFO:
             syslog(LOG_NOTICE, "got pH probe info event: %s\n", response.c_str());
-            std::cout << "pH "; 
+            std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": pH "; 
             decodeInfoResponse("pH", response);
             std::cout << std::endl;
             break;
         case AtlasScientificI2C::STATUS:
             syslog(LOG_NOTICE, "got pH probe status event: %s\n", response.c_str());
-            std::cout << "pH ";
+            std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": pH ";
             decodeStatusResponse("pH", response);
             std::cout << std::endl;
             break;
         case AtlasScientificI2C::CALIBRATE:
             if (response.find(",0") != std::string::npos)
-                std::cout << "pH probe reports no calibration data..." << std::endl;
+                std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": pH probe reports no calibration data..." << std::endl;
             break;
         case AtlasScientificI2C::SETTEMPCOMPREAD:
         case AtlasScientificI2C::GETTEMPCOMP:
-            std::cout << "pH ";
+            std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": pH ";
             decodeTempCompensation("pH", response);
             std::cout << std::endl;
             break;
@@ -267,23 +250,23 @@ void doCallback(int cmd, std::string response)
     switch (cmd) {
         case AtlasScientificI2C::INFO:
             syslog(LOG_NOTICE, "got DO probe info event: %s\n", response.c_str());
-            std::cout << "DO ";
+            std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": DO ";
             decodeInfoResponse("DO", response);
             std::cout << std::endl;
             break;
         case AtlasScientificI2C::STATUS:
             syslog(LOG_NOTICE, "got DO probe status event: %s\n", response.c_str());
-            std::cout << "DO ";
+            std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": DO ";
             decodeStatusResponse("DO", response);
             std::cout << std::endl;
             break;
         case AtlasScientificI2C::CALIBRATE:
             if (response.find(",0") != std::string::npos)
-                std::cout << "DO probe reports no calibration data..." << std::endl;
+                std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": DO probe reports no calibration data..." << std::endl;
             break;
         case AtlasScientificI2C::SETTEMPCOMPREAD:
         case AtlasScientificI2C::GETTEMPCOMP:
-            std::cout << "DO ";
+            std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": DO ";
             decodeTempCompensation("DO", response);
             std::cout << std::endl;
             break;
@@ -294,7 +277,6 @@ void doCallback(int cmd, std::string response)
 
 void sendLocalResultData()
 {
-    mqtt::message_ptr pubmsg;
     nlohmann::json j;
     std::time_t t = std::time(nullptr);
     char timebuff[100];
@@ -320,9 +302,8 @@ void sendLocalResultData()
     j["aquarium"]["ph"] = Configuration::instance()->m_ph->getPH();
     j["aquarium"]["oxygen"] = Configuration::instance()->m_oxygen->getDO();
     
-    pubmsg = mqtt::make_message("aquarium2/data", j.dump());
     if (Configuration::instance()->m_mqttConnected)
-        Configuration::instance()->m_mqtt->publish(pubmsg);
+        Configuration::instance()->m_mqtt->publish("aquarium2/data", j.dump());
 }
 
 void sendAIOResultData()
@@ -334,7 +315,7 @@ void sendAIOResultData()
         nlohmann::json tempj;
         
         wlj["value"] = Configuration::instance()->m_adc->reading(Configuration::instance()->m_adcWaterLevelIndex);
-        std::cout << __FUNCTION__ << ": pbuelow/feeds/aquarium.waterlevel: " << wlj.dump() << std::endl;
+        std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ <<  ": pbuelow/feeds/aquarium.waterlevel: " << wlj.dump() << std::endl;
         mqtt::message_ptr wl = mqtt::make_message("pbuelow/feeds/aquarium.waterlevel", wlj.dump());
         Configuration::instance()->m_aio->publish(wl);
         
@@ -369,7 +350,7 @@ void setTempCompensation()
     if (it != devices.end()) {
         c = Configuration::instance()->m_temp->getTemperatureByDevice(it->first);
 
-        std::cout << "Setting temp compensation value for probes to " << c << std::endl;
+        std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Setting temp compensation value for probes to " << c << std::endl;
         if (c != 0) {
             Configuration::instance()->m_ph->setTempCompensation(c);
             Configuration::instance()->m_oxygen->setTempCompensation(c);
@@ -383,7 +364,6 @@ void setTempCompensation()
 void sendTempProbeIdentification()
 {
     std::map<std::string, std::string> devices = Configuration::instance()->m_temp->devices();
-    mqtt::message_ptr pubmsg;
     nlohmann::json j;
     int index = 1;
 
@@ -395,8 +375,8 @@ void sendTempProbeIdentification()
         it++;
         index++;
     }
-    pubmsg = mqtt::make_message("aquarium2/devices", j.dump());
-    Configuration::instance()->m_mqtt->publish(pubmsg);
+    if (Configuration::instance()->m_mqtt->is_connected())
+        Configuration::instance()->m_mqtt->publish("aquarium2/devices", j.dump());
 }
 
 /*
@@ -409,12 +389,12 @@ void nameTempProbe(std::string json)
 
     if (!j.is_null()) {
         for (auto& el : j.items()) {
-            std::cout << __FUNCTION__ << ": " << el.key() << ":" << el.value() << std::endl;
+            std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ <<  ": " << el.key() << ":" << el.value() << std::endl;
             entry[el.key()] = el.value();
         }
     }
     else {
-        std::cout << __FUNCTION__ << ": j is null: " << json << std::endl;
+        std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ <<  ": j is null: " << json << std::endl;
     }
     
     if (entry.size())
@@ -423,7 +403,6 @@ void nameTempProbe(std::string json)
 
 void rapidFireWaterLevelMessaging(void *t)
 {
-    mqtt::message_ptr pubmsg;
     nlohmann::json j;
     ITimer *timer = static_cast<ITimer*>(t);
     
@@ -435,13 +414,13 @@ void rapidFireWaterLevelMessaging(void *t)
     }
     j["aquarium"]["waterlevel"] = Configuration::instance()->m_adc->reading(Configuration::instance()->m_adcWaterLevelIndex);
 
-    pubmsg = mqtt::make_message("aquarium2/waterlevel/value", j.dump());
-    Configuration::instance()->m_mqtt->publish(pubmsg);
+    if (Configuration::instance()->m_mqtt->is_connected())
+        Configuration::instance()->m_mqtt->publish("aquarium2/waterlevel/value", j.dump());
 }
 
 void mqttIncomingMessage(std::string topic, std::string message)
 {
-    std::cout << __FUNCTION__ << ": Handling topic " << topic << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ <<  ": Handling topic " << topic << std::endl;
     if (topic == "aquarium2/set/ds18b20") {
         nameTempProbe(message);
     }
@@ -525,6 +504,16 @@ void mainloop()
     }
     
     std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": exiting main loop..." << std::endl;
+    
+	auto toks = Configuration::instance()->m_mqtt->get_pending_delivery_tokens();
+    if (!toks.empty())
+        std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Error: There are pending delivery tokens!" << std::endl;
+
+		// Disconnect
+    std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Disconnecting..." << std::endl;
+    auto conntok = Configuration::instance()->m_mqtt->disconnect();
+    conntok->wait();
+    
     doUpdate.stop();
     phUpdate.stop();
     sendLocalUpdate.stop();
@@ -592,7 +581,7 @@ bool parse_args(int argc, char **argv)
                 cf.erase(0, 5);
                 cf.insert(0, homeDir);
             }
-            std::cerr << __FUNCTION__ << ": Changing config file path to " << cf << std::endl;
+            std::cerr  << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Changing config file path to " << cf << std::endl;
             Configuration::instance()->setConfigFile(cf);
         }
     }
