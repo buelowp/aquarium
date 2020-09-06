@@ -135,7 +135,6 @@ void decodeStatusResponse(std::string which, std::string &response)
                 g_errors.clearWarning(lastWarningHandle);
                 lastWarningHandle = 0;
             }
-            std::cout << ": probe is operating normally, reporting voltage " << voltage;
         }
         else {
             std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": probe is reporting an unusual voltage (" << voltage << "), it may not be operating correctly." << std::endl;
@@ -151,6 +150,8 @@ void decodeStatusResponse(std::string which, std::string &response)
         }
         if (Configuration::instance()->m_mqttConnected)
             Configuration::instance()->m_mqtt->publish("aquarium2/device", j.dump());
+        
+        std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": " << which << ": probe is operating normally, reporting voltage " << voltage << std::endl;
     }
     else {
         std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": probe status cannot be decoded" << std::endl;
@@ -170,20 +171,19 @@ void decodeInfoResponse(std::string which, std::string &response)
             g_errors.clearCritical(lastErrorHandle);
             lastErrorHandle = 0;
         }
-        std::cout << ": probe is running firmware version " << response.substr(pos + 1);
         if (which == "pH") {
-            std::cout << ": PH version" << response.substr(pos + 1);
             j["aquarium"]["device"]["ph"]["version"] = response.substr(pos + 1);
             Configuration::instance()->m_phVersion = response.substr(pos + 1);
         }
         else if (which == "DO") {
-            std::cout << ": DO version" << response.substr(pos + 1) << response.substr(pos + 1);
             j["aquarium"]["device"]["dissolvedoxygen"]["version"] = response.substr(pos + 1);
             Configuration::instance()->m_o2Version = response.substr(pos + 1);
         }
 
         if (Configuration::instance()->m_mqttConnected)
             Configuration::instance()->m_mqtt->publish("aquarium2/device", j.dump());
+        
+        std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": " << which << " version" << response.substr(pos + 1) << std::endl;        
     }
     else {
         std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": probe info response cannot be decoded" << std::endl;
@@ -198,7 +198,6 @@ void decodeTempCompensation(std::string which, std::string &response)
 
     std::string::size_type pos = response.find_last_of(",");
     if (pos != std::string::npos) {
-        std::cout << ": probe has a temp compensation value of " << response.substr(pos + 1) << "C";
         if (which == "pH") {
             j["aquarium"]["device"]["ph"]["tempcompensation"] = response.substr(pos + 1);
             Configuration::instance()->m_o2TempComp = response.substr(pos + 1);
@@ -208,6 +207,7 @@ void decodeTempCompensation(std::string which, std::string &response)
             Configuration::instance()->m_o2TempComp = response.substr(pos + 1);
         }
         Configuration::instance()->m_mqtt->publish("aquarium2/device", j.dump());
+        std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": " << which << ": probe has a temp compensation value of " << response.substr(pos + 1) << "C" << std::endl;
     }
     else {
         std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": probe temp compensation response cannot be decoded" << std::endl;
@@ -220,25 +220,19 @@ void phCallback(int cmd, std::string response)
     switch (cmd) {
         case AtlasScientificI2C::INFO:
             syslog(LOG_NOTICE, "got pH probe info event: %s\n", response.c_str());
-            std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": pH "; 
             decodeInfoResponse("pH", response);
-            std::cout << std::endl;
             break;
         case AtlasScientificI2C::STATUS:
             syslog(LOG_NOTICE, "got pH probe status event: %s\n", response.c_str());
-            std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": pH ";
             decodeStatusResponse("pH", response);
-            std::cout << std::endl;
             break;
         case AtlasScientificI2C::CALIBRATE:
             if (response.find(",0") != std::string::npos)
-                std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": pH probe reports no calibration data..." << std::endl;
+                std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": pH : probe reports no calibration data..." << std::endl;
             break;
         case AtlasScientificI2C::SETTEMPCOMPREAD:
         case AtlasScientificI2C::GETTEMPCOMP:
-            std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": pH ";
             decodeTempCompensation("pH", response);
-            std::cout << std::endl;
             break;
         default:
             break;
@@ -250,25 +244,19 @@ void doCallback(int cmd, std::string response)
     switch (cmd) {
         case AtlasScientificI2C::INFO:
             syslog(LOG_NOTICE, "got DO probe info event: %s\n", response.c_str());
-            std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": DO ";
             decodeInfoResponse("DO", response);
-            std::cout << std::endl;
             break;
         case AtlasScientificI2C::STATUS:
             syslog(LOG_NOTICE, "got DO probe status event: %s\n", response.c_str());
-            std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": DO ";
             decodeStatusResponse("DO", response);
-            std::cout << std::endl;
             break;
         case AtlasScientificI2C::CALIBRATE:
             if (response.find(",0") != std::string::npos)
-                std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": DO probe reports no calibration data..." << std::endl;
+                std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": DO : probe reports no calibration data..." << std::endl;
             break;
         case AtlasScientificI2C::SETTEMPCOMPREAD:
         case AtlasScientificI2C::GETTEMPCOMP:
-            std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": DO ";
             decodeTempCompensation("DO", response);
-            std::cout << std::endl;
             break;
         default:
             break;

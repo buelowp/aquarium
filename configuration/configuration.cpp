@@ -501,10 +501,9 @@ bool Configuration::createLocalConnection()
     std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": " << server << std::endl;
 
     m_mqtt = new mqtt::async_client(server, m_localId);
-    m_localCallback = new callback();
-    m_localCallback->setConnectedCallback(mqttConnected);
-    m_localCallback->setDisconnectedCallback(mqttConnectionLost);
-    m_mqtt->set_callback(*m_localCallback);
+    m_localCallback.setConnectedCallback(mqttConnected);
+    m_localCallback.setDisconnectedCallback(mqttConnectionLost);
+    m_mqtt->set_callback(m_localCallback);
 
     try {
         std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Connecting to the Local MQTT server at: " << m_mqtt->get_server_uri() << std::endl << std::flush;
@@ -543,10 +542,9 @@ bool Configuration::createAIOConnection()
     server += std::to_string(m_aioPort);
 
     m_aio = new mqtt::async_client(server, m_localId);
-    m_aioCallback = new callback();
-    m_aioCallback->setConnectedCallback(aioConnected);
-    m_aioCallback->setDisconnectedCallback(aioConnectionLost);
-    m_aio->set_callback(*m_aioCallback);
+    m_aioCallback.setConnectedCallback(aioConnected);
+    m_aioCallback.setDisconnectedCallback(aioConnectionLost);
+    m_aio->set_callback(m_aioCallback);
 
     try {
         std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << "Connecting to AIO server at " << server << std::endl << std::flush;
