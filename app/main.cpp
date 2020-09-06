@@ -505,12 +505,11 @@ void mainloop()
     
     std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": exiting main loop..." << std::endl;
     
-	auto toks = Configuration::instance()->m_mqtt->get_pending_delivery_tokens();
+    auto toks = Configuration::instance()->m_mqtt->get_pending_delivery_tokens();
     if (!toks.empty())
         std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Error: There are pending delivery tokens!" << std::endl;
 
-		// Disconnect
-    std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Disconnecting..." << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Disconnecting MQTT" << std::endl;
     auto conntok = Configuration::instance()->m_mqtt->disconnect();
     conntok->wait();
     
