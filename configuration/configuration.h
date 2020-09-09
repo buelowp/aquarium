@@ -116,6 +116,8 @@ public:
     int m_flowRatePin;
     int m_mqttPort;
     int m_adcWaterLevelIndex;
+    int m_gpioPortOne;
+    int m_gpioPortTwo;
 
 private:
     Configuration();

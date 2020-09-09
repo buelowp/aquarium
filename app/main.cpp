@@ -74,6 +74,18 @@ std::mutex g_statusMutex;
 bool g_finished;
 bool g_stopRapidFireWaterLevel;
 bool g_exitImmediately;
+int g_gpioPortOneState;
+int g_gpioPortTwoState;
+
+void gpioPortOneISR()
+{
+    g_gpioPortOneState = digitalRead(Configuration::instance()->m_gpioPortOne);
+}
+
+void gpioPortTwoISR()
+{
+    g_gpioPortTwoState = digitalRead(Configuration::instance()->m_gpioPortTwo);
+}
 
 void eternalBlinkAndDie(int pin, int millihz)
 {
@@ -183,7 +195,7 @@ void decodeInfoResponse(std::string which, std::string &response)
         if (Configuration::instance()->m_mqttConnected)
             Configuration::instance()->m_mqtt->publish("aquarium2/device", j.dump());
         
-        std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": " << which << " version" << response.substr(pos + 1) << std::endl;        
+        std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": " << which << ": version " << response.substr(pos + 1) << std::endl;        
     }
     else {
         std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": probe info response cannot be decoded" << std::endl;
@@ -228,7 +240,7 @@ void phCallback(int cmd, std::string response)
             break;
         case AtlasScientificI2C::CALIBRATE:
             if (response.find(",0") != std::string::npos)
-                std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": pH : probe reports no calibration data..." << std::endl;
+                std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": pH: probe reports no calibration data..." << std::endl;
             break;
         case AtlasScientificI2C::SETTEMPCOMPREAD:
         case AtlasScientificI2C::GETTEMPCOMP:
@@ -252,7 +264,7 @@ void doCallback(int cmd, std::string response)
             break;
         case AtlasScientificI2C::CALIBRATE:
             if (response.find(",0") != std::string::npos)
-                std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": DO : probe reports no calibration data..." << std::endl;
+                std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": DO: probe reports no calibration data..." << std::endl;
             break;
         case AtlasScientificI2C::SETTEMPCOMPREAD:
         case AtlasScientificI2C::GETTEMPCOMP:
@@ -289,6 +301,13 @@ void sendLocalResultData()
 
     j["aquarium"]["ph"] = Configuration::instance()->m_ph->getPH();
     j["aquarium"]["oxygen"] = Configuration::instance()->m_oxygen->getDO();
+    if (Configuration::instance()->m_gpioPortOne != 0) {
+        j["aquarium"]["gpio"]["1"] = g_gpioPortOneState;
+    }
+    
+    if (Configuration::instance()->m_gpioPortTwo != 0) {
+        j["aquarium"]["gpio"]["2"] = g_gpioPortTwoState;
+    }
     
     if (Configuration::instance()->m_mqttConnected)
         Configuration::instance()->m_mqtt->publish("aquarium2/data", j.dump());
@@ -649,6 +668,14 @@ int main(int argc, char *argv[])
     Configuration::instance()->m_ph->sendStatusCommand();
     Configuration::instance()->m_ph->disableLeds();
     
+    if (Configuration::instance()->m_gpioPortOne != 0) {
+        wiringPiISR(Configuration::instance()->m_gpioPortOne, INT_EDGE_BOTH, gpioPortOneISR);
+    }
+    
+    if (Configuration::instance()->m_gpioPortTwo != 0) {
+        wiringPiISR(Configuration::instance()->m_gpioPortTwo, INT_EDGE_BOTH, gpioPortTwoISR);
+    }
+
     sendTempProbeIdentification();
     
     mainloop();

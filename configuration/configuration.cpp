@@ -205,7 +205,7 @@ bool Configuration::readConfigFile()
     m_temp = new Temperature();
     tempDevices = m_temp->devices();
 
-    std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__  << ":" << __LINE__ << ": Staring config file read for " << m_configFile << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__  << ": Staring config file read for " << m_configFile << std::endl;
     try {
         config.readFile(m_configFile.c_str());
     }
@@ -339,11 +339,26 @@ bool Configuration::readConfigFile()
             m_adcWaterLevelIndex = 0;
         }
         
-        if (root.exists("spi_device")) {
-            root.lookupValue("spi_device", m_mcp3008Device);
+        if (root.exists("gpio_one")) {
+            root.lookupValue("gpio_one", m_gpioPortOne);
+            syslog(LOG_INFO, "GPIO Port One toggle set to pin %d", m_gpioPortOne);
+            std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": GPIO Toggle set to pin " << m_gpioPortOne << std::endl;
         }
         else {
-            m_mcp3008Device = "/dev/spidev0.1";
+            m_gpioPortOne = 0;
+            syslog(LOG_INFO, "GPIO Port One disabled");
+            std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": GPIO Port One disabled" << std::endl;
+        }
+
+        if (root.exists("gpio_two")) {
+            root.lookupValue("gpio_one", m_gpioPortTwo);
+            syslog(LOG_INFO, "GPIO Port Two toggle set to pin %d", m_gpioPortTwo);
+            std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": GPIO Port Two Toggle set to pin " << m_gpioPortTwo << std::endl;
+        }
+        else {
+            m_gpioPortTwo = 0;
+            syslog(LOG_INFO, "GPIO Port Two disabled");
+            std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": GPIO Port Two disabled" << std::endl;
         }
 
         if (root.exists("phsensor_address")) {
@@ -413,7 +428,7 @@ bool Configuration::readConfigFile()
                     
                     auto found = tempDevices.find(serial);
                     if (found != tempDevices.end()) {
-                        std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << "Renaming DS18B20 device " << serial << " to " << name << std::endl;
+                        std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": Renaming DS18B20 device " << serial << " to " << name << std::endl;
                         m_temp->setNameForDevice(serial, name);
                     }
                     else { // TODO: Figure out how to report this as an error!
