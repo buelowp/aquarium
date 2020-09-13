@@ -79,12 +79,32 @@ int g_gpioPortTwoState;
 
 void gpioPortOneISR()
 {
+    static int lastErrorHandle = 0;
     g_gpioPortOneState = digitalRead(Configuration::instance()->m_gpioPortOne);
+    if (g_gpioPortOneState == 1) {
+        lastErrorHandle = g_errors.warning(std::string("Left overflow is reporting high water"), Configuration::instance()->m_mqtt, 0);
+    }
+    else {
+        if (lastErrorHandle > 0) {
+            g_errors.clearWarning(lastErrorHandle);
+            lastErrorHandle = 0;
+        }
+    }
 }
 
 void gpioPortTwoISR()
 {
+    static int lastErrorHandle = 0;
     g_gpioPortTwoState = digitalRead(Configuration::instance()->m_gpioPortTwo);
+    if (g_gpioPortTwoState == 1) {
+        lastErrorHandle = g_errors.warning(std::string("Right overflow is reporting high water"), Configuration::instance()->m_mqtt, 0);
+    }
+    else {
+        if (lastErrorHandle > 0) {
+            g_errors.clearWarning(lastErrorHandle);
+            lastErrorHandle = 0;
+        }
+    }
 }
 
 void eternalBlinkAndDie(int pin, int millihz)
